@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { clampScore, formatScore, healthBand } from "./healthScore";
 import { ringProgress, ringState } from "./rings";
 import { currentStreak, longestStreak } from "./streak";
-import { averageHealthScore, groupByDate, sumMeals } from "./totals";
+import { averageHealthScore, groupByDate, rolloverAmount, sumMeals } from "./totals";
 import type { Meal } from "./types";
 
 function meal(partial: Partial<Meal>): Meal {
@@ -137,5 +137,21 @@ describe("health score", () => {
     expect(formatScore(7.54)).toBe("7.5");
     expect(formatScore(12)).toBe("10");
     expect(clampScore(-3)).toBe(0);
+  });
+});
+
+describe("rolloverAmount", () => {
+  it("carries over unused calories up to 200", () => {
+    expect(rolloverAmount(2000, 1900, true)).toBe(100);
+    expect(rolloverAmount(2000, 1500, true)).toBe(200);
+    expect(rolloverAmount(2000, 800, true)).toBe(200);
+  });
+
+  it("never goes negative when the goal was exceeded", () => {
+    expect(rolloverAmount(2000, 2300, true)).toBe(0);
+  });
+
+  it("carries nothing over from a day with no meals logged", () => {
+    expect(rolloverAmount(2000, 0, false)).toBe(0);
   });
 });

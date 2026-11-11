@@ -16,7 +16,7 @@ export function ActivityCard({
   const pct = stepGoal > 0 ? Math.min(100, (steps / stepGoal) * 100) : 0;
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl bg-muted/60 p-4">
+    <div className="flex flex-col gap-3 rounded-2xl bg-card border border-border p-4">
       <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
         <Footprints className="size-3.5" style={{ color: "var(--success)" }} aria-hidden />
         Steps

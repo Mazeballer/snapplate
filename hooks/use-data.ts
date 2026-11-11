@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { dataSource } from "@/lib/data";
+import { dataSource, type SaveProfileInput } from "@/lib/data";
 import type { LogDate } from "@/lib/time";
 
 export function useProfile() {
@@ -34,6 +34,19 @@ export function useActivity(from: LogDate | null, to: LogDate | null) {
     queryKey: ["activity", from, to],
     queryFn: () => dataSource.getActivity(from!, to!),
     enabled: from !== null && to !== null,
+  });
+}
+
+export function useSaveProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SaveProfileInput) => dataSource.saveProfile(input),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["profile"] }),
+        queryClient.invalidateQueries({ queryKey: ["weights"] }),
+      ]);
+    },
   });
 }
 

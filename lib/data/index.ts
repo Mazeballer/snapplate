@@ -6,4 +6,4 @@ import { supabaseDataSource } from "./supabase";
 /** Sample data in mock mode, the signed-in user's real data otherwise. */
 export const dataSource: DataSource = MOCK_MODE ? mockDataSource : supabaseDataSource;
 
-export type { DataSource } from "./source";
+export type { DataSource, SaveProfileInput } from "./source";

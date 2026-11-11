@@ -498,6 +498,10 @@ function buildProfile(today: LogDate, weightKg: number): Profile {
     goalWeightKg: 72,
     paceKgPerWeek: 0.5,
     dietPlan: "balanced",
+    dietaryPreference: null,
+    restrictions: [],
+    calorieOverride: false,
+    rolloverCalories: false,
     calorieTarget: target.calories,
     proteinG: macros.proteinG,
     carbsG: macros.carbsG,
@@ -599,6 +603,16 @@ export const mockDataSource: DataSource = {
   async getActivity(from, to) {
     await delay();
     return getStore().activity.filter((a) => a.logDate >= from && a.logDate <= to);
+  },
+  async saveProfile({ profile, weightLog }) {
+    await delay(300);
+    const s = getStore();
+    s.profile = profile;
+    if (weightLog) {
+      s.weights = [...s.weights.filter((w) => w.logDate !== weightLog.logDate), weightLog].sort((a, b) =>
+        a.logDate < b.logDate ? -1 : 1,
+      );
+    }
   },
   async addWater(amountMl) {
     await delay(120);

@@ -22,7 +22,7 @@ export function Providers({ children }: { children: ReactNode }) {
   );
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
       {/* Skip animations for people who turned on "reduce motion" on their phone. */}
       <MotionConfig reducedMotion="user">
         <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>

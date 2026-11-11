@@ -1,4 +1,4 @@
-import { RING_COLORS } from "@/components/snapplate/calorie-ring";
+import { RING_COLORS } from "@/components/snapplate/ring-colors";
 import { formatNumber } from "@/lib/format";
 import type { RingState } from "@/lib/rings";
 

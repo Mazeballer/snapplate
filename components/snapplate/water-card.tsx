@@ -19,7 +19,7 @@ export function WaterCard({ ml, canAdd }: { ml: number; canAdd: boolean }) {
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl bg-muted/60 p-4">
+    <div className="flex flex-col gap-3 rounded-2xl bg-card border border-border p-4">
       <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
         <Droplet className="size-3.5" style={{ color: "var(--fat)" }} aria-hidden />
         Water

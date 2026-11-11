@@ -30,7 +30,7 @@ export function MealRow({ meal, onOpen }: { meal: Meal; onOpen: (meal: Meal) => 
     <button
       type="button"
       onClick={() => onOpen(meal)}
-      className="flex w-full items-center gap-3 rounded-2xl bg-muted/60 p-3 text-left transition-colors active:bg-muted"
+      className="flex w-full items-center gap-3 rounded-2xl bg-card border border-border p-3 text-left transition-colors active:bg-muted"
     >
       <MealThumb meal={meal} />
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">

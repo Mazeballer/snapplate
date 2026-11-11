@@ -40,3 +40,16 @@ export function averageHealthScore(meals: readonly Meal[]): number | null {
   if (scores.length === 0) return null;
   return scores.reduce((a, b) => a + b, 0) / scores.length;
 }
+
+/** The most unused calories that carry over into the next day. */
+export const ROLLOVER_CAP_KCAL = 200;
+
+/**
+ * Unused calories from the previous day that are added to today's goal, up to the cap.
+ * Nothing carries over from a day with no meals logged (that is a missed day, not a saved one),
+ * and eating over the goal never takes calories away.
+ */
+export function rolloverAmount(previousGoal: number, previousEaten: number, hadLogs: boolean): number {
+  if (!hadLogs) return 0;
+  return Math.min(ROLLOVER_CAP_KCAL, Math.max(0, Math.round(previousGoal - previousEaten)));
+}

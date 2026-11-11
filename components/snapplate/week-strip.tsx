@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { RING_COLORS } from "@/components/snapplate/calorie-ring";
+import { RING_COLORS } from "@/components/snapplate/ring-colors";
 import { ringProgress, type RingState } from "@/lib/rings";
 import { formatWeekday, parseLogDate, type LogDate } from "@/lib/time";
 import { cn } from "@/lib/utils";

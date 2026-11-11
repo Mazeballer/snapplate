@@ -1,15 +1,16 @@
 "use client";
 
 import { Beef, CloudOff, Droplet, UserRound, UtensilsCrossed, Wheat } from "lucide-react";
-import { useMemo, useState } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { ActivityCard } from "@/components/snapplate/activity-card";
-import { CalorieRing } from "@/components/snapplate/calorie-ring";
 import { EmptyState } from "@/components/snapplate/empty-state";
 import { HealthChip } from "@/components/snapplate/health-chip";
-import { MacroCard } from "@/components/snapplate/macro-card";
 import { MealDetailDrawer } from "@/components/snapplate/meal-detail-drawer";
 import { MealRow } from "@/components/snapplate/meal-row";
 import { MockBanner } from "@/components/snapplate/mock-banner";
+import { CalorieCard, MacroRingCard } from "@/components/snapplate/ring-cards";
 import { StreakChip } from "@/components/snapplate/streak-chip";
 import { WaterCard } from "@/components/snapplate/water-card";
 import { WeekStrip, type DaySummary } from "@/components/snapplate/week-strip";
@@ -18,21 +19,21 @@ import { useActivity, useMeals, useProfile, useWater } from "@/hooks/use-data";
 import { useToday } from "@/hooks/use-today";
 import { HISTORY_DAYS } from "@/lib/constants";
 import { formatNumber } from "@/lib/format";
-import { ringState } from "@/lib/rings";
+import { ringProgress, ringState } from "@/lib/rings";
 import { currentStreak } from "@/lib/streak";
-import { addDays, formatDate, formatDayLabel, startOfWeek, weekDates, type LogDate } from "@/lib/time";
-import { averageHealthScore, groupByDate, sumMeals } from "@/lib/totals";
+import { addDays, formatDate, startOfWeek, weekDates, type LogDate } from "@/lib/time";
+import { averageHealthScore, groupByDate, rolloverAmount, sumMeals } from "@/lib/totals";
 import type { Meal } from "@/lib/types";
 
 function HomeSkeleton() {
   return (
-    <div className="flex flex-col gap-5" aria-busy="true" aria-label="Loading">
-      <div className="h-12 w-40 animate-pulse rounded-xl bg-muted" />
+    <div className="flex flex-col gap-4" aria-busy="true" aria-label="Loading">
+      <div className="h-9 w-44 animate-pulse rounded-xl bg-muted" />
       <div className="h-16 animate-pulse rounded-2xl bg-muted" />
-      <div className="mx-auto size-[232px] animate-pulse rounded-full bg-muted" />
+      <div className="h-[140px] animate-pulse rounded-[20px] bg-muted" />
       <div className="flex gap-2">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="h-24 flex-1 animate-pulse rounded-2xl bg-muted" />
+          <div key={i} className="h-[150px] flex-1 animate-pulse rounded-[18px] bg-muted" />
         ))}
       </div>
     </div>
@@ -40,6 +41,7 @@ function HomeSkeleton() {
 }
 
 export function HomeScreen() {
+  const router = useRouter();
   const today = useToday();
   const [picked, setPicked] = useState<LogDate | null>(null);
   const [detail, setDetail] = useState<{ meal: Meal; open: boolean } | null>(null);
@@ -52,10 +54,14 @@ export function HomeScreen() {
 
   const meals = mealsQuery.data;
   const byDate = useMemo(() => groupByDate(meals ?? []), [meals]);
-  const streak = useMemo(
-    () => (today ? currentStreak(byDate.keys(), today) : 0),
-    [byDate, today],
-  );
+  const streak = useMemo(() => (today ? currentStreak(byDate.keys(), today) : 0), [byDate, today]);
+
+  // A new account has no profile yet: send it to the setup flow.
+  const needsSetup =
+    !profileQuery.isPending && !profileQuery.isError && (!profileQuery.data || !profileQuery.data.onboarded);
+  useEffect(() => {
+    if (needsSetup) router.replace("/onboarding");
+  }, [needsSetup, router]);
 
   if (profileQuery.isError || mealsQuery.isError) {
     return (
@@ -78,7 +84,7 @@ export function HomeScreen() {
   }
 
   const profile = profileQuery.data;
-  if (!today || from === null || profileQuery.isPending || mealsQuery.isPending) {
+  if (!today || from === null || profileQuery.isPending || mealsQuery.isPending || needsSetup) {
     return <HomeSkeleton />;
   }
 
@@ -86,7 +92,7 @@ export function HomeScreen() {
     return (
       <div className="flex flex-col gap-4 pt-10">
         <EmptyState icon={UserRound} title="Let's set up your plan">
-          Your profile isn&apos;t set up yet. The guided setup is coming soon.
+          Taking you to the setup…
         </EmptyState>
       </div>
     );
@@ -97,10 +103,23 @@ export function HomeScreen() {
   const totals = sumMeals(dayMeals);
   const activity = activityQuery.data?.find((a) => a.logDate === date);
   const burned = profile.addBurnedCalories ? (activity?.activeKcal ?? 0) : 0;
-  const goal = profile.calorieTarget + burned;
+
+  let rollover = 0;
+  if (profile.rolloverCalories) {
+    const previous = byDate.get(addDays(date, -1)) ?? [];
+    rollover = rolloverAmount(profile.calorieTarget, sumMeals(previous).calories, previous.length > 0);
+  }
+
+  const goal = profile.calorieTarget + burned + rollover;
+  const remaining = goal - totals.calories;
+  const state = ringState(totals.calories, goal, dayMeals.length > 0);
+  const ringColor = state === "over" ? "var(--danger)" : state === "slightly_over" ? "var(--warning)" : "var(--foreground)";
   const avgHealth = averageHealthScore(dayMeals);
   const waterMl = waterQuery.data?.[date] ?? 0;
   const week = weekDates(date);
+  const extras = [burned > 0 ? `+${formatNumber(burned)} burned` : null, rollover > 0 ? `+${formatNumber(rollover)} rolled over` : null]
+    .filter(Boolean)
+    .join(" · ");
 
   const summaryFor = (d: LogDate): DaySummary => {
     const list = byDate.get(d) ?? [];
@@ -108,14 +127,23 @@ export function HomeScreen() {
     return { state: ringState(eaten, profile.calorieTarget, list.length > 0), eaten, goal: profile.calorieTarget };
   };
 
+  const macro = (eaten: number, target: number) => ({
+    value: `${formatNumber(Math.abs(target - eaten))}g`,
+    caption: target - eaten < 0 ? "over" : "left",
+    progress: ringProgress(eaten, target),
+  });
+  const protein = macro(totals.proteinG, profile.proteinG);
+  const carbs = macro(totals.carbsG, profile.carbsG);
+  const fat = macro(totals.fatG, profile.fatG);
+
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <MockBanner />
 
-      <header className="flex items-start justify-between gap-3">
-        <div className="flex flex-col">
-          <h1 className="text-3xl font-semibold tracking-tight">{formatDayLabel(date, today)}</h1>
-          <p className="text-sm text-muted-foreground">{formatDate(date)}</p>
+      <header className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <Image src="/icons/icon-192.png" alt="" width={34} height={34} priority className="rounded-[10px]" />
+          <span className="text-2xl font-bold tracking-tight">Snapplate</span>
         </div>
         <StreakChip days={streak} />
       </header>
@@ -135,31 +163,21 @@ export function HomeScreen() {
         canGoNext={addDays(startOfWeek(date), 7) <= today}
       />
 
-      <section className="flex flex-col gap-5 rounded-3xl bg-muted/60 p-5" aria-label="Calories">
-        <CalorieRing eaten={totals.calories} goal={goal} hasLogs={dayMeals.length > 0} />
-        <dl className="grid grid-cols-3 text-center">
-          <div>
-            <dd className="text-lg font-semibold tabular-nums">{formatNumber(totals.calories)}</dd>
-            <dt className="text-xs text-muted-foreground">Eaten</dt>
-          </div>
-          <div>
-            <dd className="text-lg font-semibold tabular-nums">{formatNumber(goal)}</dd>
-            <dt className="text-xs text-muted-foreground">Goal</dt>
-          </div>
-          <div>
-            <dd className="text-lg font-semibold tabular-nums">{formatNumber(activity?.activeKcal ?? 0)}</dd>
-            <dt className="text-xs text-muted-foreground">Burned</dt>
-          </div>
-        </dl>
-      </section>
+      <CalorieCard
+        value={formatNumber(Math.abs(remaining))}
+        label={remaining < 0 ? "Calories over" : "Calories left"}
+        note={extras || undefined}
+        progress={ringProgress(totals.calories, goal)}
+        ringColor={ringColor}
+      />
 
       <section className="flex gap-2" aria-label="Macros">
-        <MacroCard label="Protein" icon={Beef} eaten={totals.proteinG} goal={profile.proteinG} colorVar="--protein" />
-        <MacroCard label="Carbs" icon={Wheat} eaten={totals.carbsG} goal={profile.carbsG} colorVar="--carbs" />
-        <MacroCard label="Fat" icon={Droplet} eaten={totals.fatG} goal={profile.fatG} colorVar="--fat" />
+        <MacroRingCard label="Protein" icon={Beef} colorVar="--protein" {...protein} />
+        <MacroRingCard label="Carbs" icon={Wheat} colorVar="--carbs" {...carbs} />
+        <MacroRingCard label="Fat" icon={Droplet} colorVar="--fat" {...fat} />
       </section>
 
-      <section className="grid grid-cols-2 gap-3" aria-label="Activity and water">
+      <section className="grid grid-cols-2 gap-2" aria-label="Activity and water">
         <ActivityCard
           steps={activity?.steps ?? 0}
           activeKcal={activity?.activeKcal ?? 0}
@@ -171,7 +189,7 @@ export function HomeScreen() {
 
       <section className="flex flex-col gap-3" aria-label="Meals">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Meals</h2>
+          <h2 className="text-lg font-bold">{date === today ? "Recently logged" : `Logged ${formatDate(date)}`}</h2>
           {avgHealth !== null ? (
             <span className="flex items-center gap-2 text-xs text-muted-foreground">
               Avg health <HealthChip score={avgHealth} />
@@ -180,7 +198,7 @@ export function HomeScreen() {
         </div>
         {dayMeals.length > 0 ? (
           <ul className="flex flex-col gap-2">
-            {dayMeals.map((meal) => (
+            {[...dayMeals].reverse().map((meal) => (
               <li key={meal.id}>
                 <MealRow meal={meal} onOpen={(m) => setDetail({ meal: m, open: true })} />
               </li>

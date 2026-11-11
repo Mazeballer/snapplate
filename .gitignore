@@ -48,3 +48,4 @@ supabase/.temp/
 
 # Private research notes on the reference app. Kept out of the public repo.
 docs/cal-ai-requirements.md
+docs/cal-ai-ui-notes.md

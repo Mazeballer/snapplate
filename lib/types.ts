@@ -62,6 +62,9 @@ export interface Profile {
   goalWeightKg: number | null;
   paceKgPerWeek: number | null;
   dietPlan: DietPlan;
+  /** A way of eating such as "vegan" or "pescatarian", or null for no particular diet. */
+  dietaryPreference: string | null;
+  restrictions: string[];
   calorieTarget: number;
   proteinG: number;
   carbsG: number;
@@ -69,8 +72,11 @@ export interface Profile {
   fiberG: number;
   sugarG: number;
   sodiumMg: number;
+  /** True when the user typed their own calorie target instead of the calculated one. */
+  calorieOverride: boolean;
   stepGoal: number;
   addBurnedCalories: boolean;
+  rolloverCalories: boolean;
   onboarded: boolean;
 }
 

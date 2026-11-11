@@ -30,13 +30,33 @@ export const MIN_CALORIES: Record<Sex, number> = {
   other: 1350,
 };
 
-/** Weekly pace limits in kg, and the point where we warn it is aggressive. */
+/**
+ * Weekly pace limits in kg, and the point above which we warn it is aggressive. These follow the
+ * range the reference app offers: 0.1 to 1.5 kg a week, with anything over 1 kg flagged as fast.
+ * The calorie safety floor still applies on top, whatever pace is chosen.
+ */
 export const PACE_LIMITS = {
-  lose: { min: 0.1, max: 1, fastAbove: 0.75 },
-  gain: { min: 0.1, max: 0.75, fastAbove: 0.5 },
+  lose: { min: 0.1, max: 1.5, fastAbove: 1 },
+  gain: { min: 0.1, max: 1.5, fastAbove: 1 },
 } as const;
 
-export const DEFAULT_PACE_KG_PER_WEEK = 0.5;
+export const DEFAULT_PACE_KG_PER_WEEK = 0.8;
+
+export type PaceLevel = "slow" | "balanced" | "fast";
+
+/**
+ * Which band a pace falls in, judged in the units the person picked it in: in metric up to
+ * 0.4 kg a week is slow and up to 1.0 is balanced; in imperial up to 1 lb is slow and up to 2 lb
+ * is balanced. Anything above is fast.
+ */
+export function paceLevel(paceKgPerWeek: number, units: "metric" | "imperial"): PaceLevel {
+  if (units === "metric") {
+    const tenths = Math.round(paceKgPerWeek * 10);
+    return tenths <= 4 ? "slow" : tenths <= 10 ? "balanced" : "fast";
+  }
+  const tenthsOfPound = Math.round(paceKgPerWeek * 22.0462);
+  return tenthsOfPound <= 10 ? "slow" : tenthsOfPound <= 20 ? "balanced" : "fast";
+}
 
 /** Share of calories from protein / carbs / fat for each diet plan. */
 export const MACRO_SPLIT: Record<DietPlan, { protein: number; carbs: number; fat: number }> = {

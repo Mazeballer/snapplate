@@ -12,6 +12,7 @@ import {
   lbToKg,
   macroTargets,
   maintenanceCalories,
+  paceLevel,
   projectGoalDate,
   round1,
   type BodyStats,
@@ -70,24 +71,49 @@ describe("calorieTarget", () => {
     expect(result.dailyDelta).toBe(1200 - result.maintenance);
   });
 
-  it("clamps an out-of-range pace", () => {
-    expect(calorieTarget(male, "moderate", "lose", 5).dailyDelta).toBe(-1100); // clamped to 1 kg/week
+  it("clamps an out-of-range pace to 1.5 kg a week, then applies the safety floor", () => {
+    const result = calorieTarget(male, "moderate", "lose", 5);
+    expect(result.calories).toBe(1500); // 2759 - 1650 would be 1109, below the 1500 floor
+    expect(result.floored).toBe(true);
+  });
+
+  it("allows a fast gain up to 1.5 kg a week", () => {
+    expect(calorieTarget(male, "moderate", "gain", 1.5).dailyDelta).toBe(1650);
   });
 });
 
 describe("pace helpers", () => {
   it("clamps to the allowed range", () => {
-    expect(clampPace("lose", 3)).toBe(1);
+    expect(clampPace("lose", 3)).toBe(1.5);
     expect(clampPace("lose", 0)).toBe(0.1);
-    expect(clampPace("gain", 2)).toBe(0.75);
+    expect(clampPace("gain", 2)).toBe(1.5);
     expect(clampPace("maintain", 0.5)).toBe(0);
   });
 
   it("flags aggressive paces", () => {
-    expect(isFastPace("lose", 0.8)).toBe(true);
-    expect(isFastPace("lose", 0.5)).toBe(false);
-    expect(isFastPace("gain", 0.6)).toBe(true);
+    expect(isFastPace("lose", 1.1)).toBe(true);
+    expect(isFastPace("lose", 1)).toBe(false);
+    expect(isFastPace("lose", 0.8)).toBe(false);
+    expect(isFastPace("gain", 1.1)).toBe(true);
     expect(isFastPace("maintain", 1)).toBe(false);
+  });
+});
+
+describe("paceLevel", () => {
+  it("bands a metric pace as slow, balanced or fast", () => {
+    expect(paceLevel(0.1, "metric")).toBe("slow");
+    expect(paceLevel(0.4, "metric")).toBe("slow");
+    expect(paceLevel(0.5, "metric")).toBe("balanced");
+    expect(paceLevel(1, "metric")).toBe("balanced");
+    expect(paceLevel(1.1, "metric")).toBe("fast");
+    expect(paceLevel(1.5, "metric")).toBe("fast");
+  });
+
+  it("bands an imperial pace by pounds", () => {
+    expect(paceLevel(0.45, "imperial")).toBe("slow"); // about 1 lb
+    expect(paceLevel(0.5, "imperial")).toBe("balanced"); // about 1.1 lb
+    expect(paceLevel(0.9, "imperial")).toBe("balanced"); // about 2 lb
+    expect(paceLevel(1, "imperial")).toBe("fast");
   });
 });
 

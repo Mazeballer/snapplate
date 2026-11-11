@@ -82,6 +82,17 @@ export function endOfLogDate(logDate: LogDate): Date {
   return new Date(startOfLogDate(logDate).getTime() + DAY_MS);
 }
 
+/** How many days a month has (month is 1 to 12). */
+export function daysInMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+/** Build a log date from parts, clamping the day to what the month allows. */
+export function makeLogDate(year: number, month: number, day: number): LogDate {
+  const d = Math.min(day, daysInMonth(year, month));
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
 /** Add (or subtract) whole days to a log date. */
 export function addDays(logDate: LogDate, days: number): LogDate {
   const { year, month, day } = parseLogDate(logDate);

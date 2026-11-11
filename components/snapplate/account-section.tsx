@@ -26,7 +26,7 @@ export async function AccountSection() {
   return (
     <section className="flex flex-col gap-3">
       <h2 className="text-sm font-medium text-muted-foreground">Account</h2>
-      <div className="flex flex-col gap-3 rounded-2xl bg-muted/60 p-4">
+      <div className="flex flex-col gap-3 rounded-2xl bg-card border border-border p-4">
         <div className="flex flex-col">
           <span className="text-xs text-muted-foreground">Signed in as</span>
           <span className="break-all font-medium">{user.email ?? "Unknown account"}</span>

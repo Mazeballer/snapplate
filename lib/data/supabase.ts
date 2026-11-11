@@ -51,6 +51,10 @@ interface ProfileRow {
   goal_weight_kg: number | null;
   pace_kg_per_week: number | null;
   diet_plan: Profile["dietPlan"];
+  dietary_preference: string | null;
+  restrictions: string[] | null;
+  calorie_override: boolean;
+  rollover_calories: boolean;
   calorie_target: number | null;
   protein_g: number | null;
   carbs_g: number | null;
@@ -117,6 +121,10 @@ function toProfile(row: ProfileRow): Profile {
     goalWeightKg: row.goal_weight_kg,
     paceKgPerWeek: row.pace_kg_per_week,
     dietPlan: row.diet_plan,
+    dietaryPreference: row.dietary_preference,
+    restrictions: row.restrictions ?? [],
+    calorieOverride: row.calorie_override,
+    rolloverCalories: row.rollover_calories,
     // Until onboarding sets real targets, fall back to sensible defaults.
     calorieTarget: row.calorie_target ?? 2000,
     proteinG: row.protein_g ?? 150,
@@ -189,6 +197,52 @@ export const supabaseDataSource: DataSource = {
         activeKcal: Number(r.active_kcal),
       }),
     );
+  },
+
+  async saveProfile({ profile: p, weightLog, markOnboarded }) {
+    const supabase = createClient();
+    // user_id is filled in by the database from the signed-in session.
+    const { error } = await supabase.from("profiles").upsert(
+      {
+        display_name: p.displayName,
+        sex: p.sex,
+        date_of_birth: p.dateOfBirth,
+        height_cm: p.heightCm,
+        weight_kg: p.weightKg,
+        units: p.units,
+        activity_level: p.activityLevel,
+        goal: p.goal,
+        goal_weight_kg: p.goalWeightKg,
+        pace_kg_per_week: p.paceKgPerWeek,
+        diet_plan: p.dietPlan,
+        dietary_preference: p.dietaryPreference,
+        restrictions: p.restrictions,
+        calorie_target: p.calorieTarget,
+        protein_g: p.proteinG,
+        carbs_g: p.carbsG,
+        fat_g: p.fatG,
+        fiber_g: p.fiberG,
+        sugar_g: p.sugarG,
+        sodium_mg: p.sodiumMg,
+        calorie_override: p.calorieOverride,
+        step_goal: p.stepGoal,
+        add_burned_calories: p.addBurnedCalories,
+        rollover_calories: p.rolloverCalories,
+        ...(markOnboarded ? { onboarded_at: new Date().toISOString() } : {}),
+      },
+      { onConflict: "user_id" },
+    );
+    if (error) fail("Could not save your profile", error);
+
+    if (weightLog) {
+      const { error: weightError } = await supabase
+        .from("weight_logs")
+        .upsert(
+          { log_date: weightLog.logDate, weight_kg: weightLog.weightKg },
+          { onConflict: "user_id,log_date" },
+        );
+      if (weightError) fail("Could not save your weight", weightError);
+    }
   },
 
   async addWater(amountMl: number) {

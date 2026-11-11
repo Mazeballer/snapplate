@@ -50,7 +50,7 @@ function Card({
   aside?: React.ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-4 rounded-3xl bg-muted/60 p-5" aria-label={title}>
+    <section className="flex flex-col gap-4 rounded-3xl bg-card border border-border p-5" aria-label={title}>
       <div className="flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 font-semibold">
           <Icon className="size-4 text-muted-foreground" aria-hidden />
@@ -75,7 +75,7 @@ function StatTile({
   color: string;
 }) {
   return (
-    <div className="flex flex-col gap-1 rounded-2xl bg-muted/60 p-4">
+    <div className="flex flex-col gap-1 rounded-2xl bg-card border border-border p-4">
       <Icon className="size-4" style={{ color }} aria-hidden />
       <span className="text-2xl font-semibold tabular-nums">{value}</span>
       <span className="text-xs text-muted-foreground">{label}</span>

@@ -26,7 +26,7 @@ const FACTOR_ICON: Record<FactorQuality, { icon: LucideIcon; className: string }
 
 function Macro({ label, value, colorVar }: { label: string; value: number; colorVar: string }) {
   return (
-    <div className="flex flex-1 flex-col items-center gap-0.5 rounded-2xl bg-muted/60 py-3">
+    <div className="flex flex-1 flex-col items-center gap-0.5 rounded-2xl bg-card border border-border py-3">
       <span className="text-lg font-semibold tabular-nums">{Math.round(value)}g</span>
       <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <span className="size-2 rounded-full" style={{ background: `var(${colorVar})` }} aria-hidden />
@@ -38,7 +38,7 @@ function Macro({ label, value, colorVar }: { label: string; value: number; color
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-1 flex-col rounded-2xl bg-muted/60 px-3 py-2.5">
+    <div className="flex flex-1 flex-col rounded-2xl bg-card border border-border px-3 py-2.5">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="font-semibold tabular-nums">{value}</span>
     </div>
@@ -107,7 +107,7 @@ export function MealDetailDrawer({
               ) : null}
 
               {meal.healthScore !== null && band ? (
-                <section className="flex flex-col gap-3 rounded-2xl bg-muted/60 p-4" aria-label="Health score">
+                <section className="flex flex-col gap-3 rounded-2xl bg-card border border-border p-4" aria-label="Health score">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold">Health score</h3>
                     <span className={cn("rounded-full px-2.5 py-1 text-sm font-semibold", HEALTH_TONE_CLASSES[band.tone])}>
@@ -142,7 +142,7 @@ export function MealDetailDrawer({
               {meal.items.length > 0 ? (
                 <section className="flex flex-col gap-2" aria-label="Ingredients">
                   <h3 className="font-semibold">Ingredients</h3>
-                  <ul className="flex flex-col divide-y divide-border rounded-2xl bg-muted/60 px-4">
+                  <ul className="flex flex-col divide-y divide-border rounded-2xl bg-card border border-border px-4">
                     {meal.items.map((item) => (
                       <li key={item.id} className="flex items-center justify-between gap-3 py-3">
                         <span className="min-w-0">
