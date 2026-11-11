@@ -150,6 +150,28 @@ function noonUtc(logDate: LogDate): Date {
   return new Date(Date.UTC(year, month - 1, day, 12));
 }
 
+const shortFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  timeZone: "UTC",
+});
+const longFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+/** A log date as day and month, e.g. "3 Nov". */
+export function formatShortDate(logDate: LogDate): string {
+  return shortFormatter.format(noonUtc(logDate));
+}
+
+/** A log date with the year, e.g. "3 Nov 2026". */
+export function formatLongDate(logDate: LogDate): string {
+  return longFormatter.format(noonUtc(logDate));
+}
+
 /** A log date written out, e.g. "Tue, 3 Nov". */
 export function formatDate(logDate: LogDate): string {
   return dayFormatter.format(noonUtc(logDate));

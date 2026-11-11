@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { MOCK_MODE } from "@/lib/mock";
 import { updateSession } from "@/lib/supabase/proxy";
 
 // Pages anyone may open without signing in.
@@ -9,6 +10,14 @@ function isPublic(pathname: string) {
 }
 
 export async function proxy(request: NextRequest) {
+  // Mock mode: no accounts, so nothing to check. The login page just goes to the app.
+  if (MOCK_MODE) {
+    if (request.nextUrl.pathname === "/login") {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    return NextResponse.next();
+  }
+
   const { response, signedIn } = await updateSession(request);
   const { pathname, searchParams } = request.nextUrl;
 

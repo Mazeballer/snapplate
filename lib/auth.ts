@@ -1,6 +1,8 @@
 import "server-only";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { cache } from "react";
+import { MOCK_MODE, MOCK_USER } from "@/lib/mock";
 import { createClient } from "@/lib/supabase/server";
 
 export interface CurrentUser {
@@ -20,6 +22,13 @@ export interface CurrentUser {
  * friendly layer, not the only one.
  */
 export const getCurrentUser = cache(async (): Promise<CurrentUser> => {
+  // Mock mode previews the UI on sample data, with no account.
+  if (MOCK_MODE) return { id: MOCK_USER.id, email: MOCK_USER.email };
+
+  // Supabase checks token expiry against the current time. Wait for a real request first so
+  // that time-dependent work is never evaluated while Next prepares the static page shell.
+  await connection();
+
   const supabase = await createClient();
 
   const { data } = await supabase.auth.getClaims();
