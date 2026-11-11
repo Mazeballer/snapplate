@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
 
 // Pages anyone may open without signing in.
-const PUBLIC_PREFIXES = ["/login", "/auth"];
+const PUBLIC_PREFIXES = ["/login", "/auth", "/privacy"];
 
 function isPublic(pathname: string) {
   return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));

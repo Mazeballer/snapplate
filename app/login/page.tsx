@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { Suspense } from "react";
 import { GoogleButton } from "@/components/snapplate/google-button";
 import { LoginError } from "@/components/snapplate/login-error";
@@ -31,7 +32,10 @@ export default function LoginPage() {
         </Suspense>
         <GoogleButton />
         <p className="text-center text-xs text-muted-foreground">
-          Snapplate is private. Only invited Google accounts can sign in.
+          Snapplate is private. Only invited Google accounts can sign in.{" "}
+          <Link href="/privacy" className="underline underline-offset-2">
+            Privacy
+          </Link>
         </p>
       </div>
     </main>
