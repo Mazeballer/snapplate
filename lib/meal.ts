@@ -1,6 +1,6 @@
 /** Pure helpers for logging a meal: picking a meal type, timing it, and scaling servings. */
 import { minutesSinceMidnight, startOfLogDate, todayLogDate, type LogDate } from "./time";
-import type { Meal, MealDraft, MealInput, MealType, NewMealItem, SavedMeal, SavedMealInput } from "./types";
+import type { Meal, MealDraft, MealInput, MealType, NewMealItem, SavedMealInput } from "./types";
 
 /** Breakfast until 10:30, lunch until 15:00, a snack until 17:30, dinner until 22:00, then a snack. */
 export function defaultMealType(minutes: number): MealType {
@@ -70,7 +70,7 @@ export function draftTotals(draft: MealDraft) {
   };
 }
 
-export function draftFromSaved(saved: SavedMeal, mealType: MealType): MealDraft {
+export function draftFromSaved(saved: SavedMealInput, mealType: MealType): MealDraft {
   return {
     name: saved.name,
     emoji: saved.emoji,

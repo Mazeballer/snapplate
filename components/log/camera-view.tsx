@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, Image as ImageIcon, X } from "lucide-react";
+import { Camera, Image as ImageIcon, ScanLine, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -136,22 +136,31 @@ export function CameraView({
         ) : null}
       </div>
 
-      <div className="px-8 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-        {status === "live" ? <p className="mb-3 text-center text-xs text-white/80">Keep the food inside the frame and hold still.</p> : null}
-        <div className="flex items-center justify-between">
-          <button type="button" onClick={() => pickInput.current?.click()} aria-label="Choose from gallery" className="flex size-14 items-center justify-center rounded-2xl bg-white/15 active:bg-white/25">
-            <ImageIcon className="size-6" aria-hidden />
-          </button>
+      <div className="flex flex-col items-center gap-4 px-5 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+        {status === "live" ? <p className="text-center text-xs text-white/80">Keep the food inside the frame and hold still.</p> : null}
+        <button
+          type="button"
+          onClick={capture}
+          disabled={status !== "live"}
+          aria-label="Take photo"
+          className="flex size-[76px] items-center justify-center rounded-full border-4 border-white p-1 disabled:opacity-40"
+        >
+          <span className="size-full rounded-full bg-white active:scale-95" />
+        </button>
+        {/* Mode row, like the reference camera: Scan Food is on, Gallery picks an existing photo. */}
+        <div className="flex w-full gap-2.5">
+          <span aria-current="true" className="flex h-[70px] flex-1 flex-col items-center justify-center gap-1 rounded-2xl bg-white text-black">
+            <ScanLine className="size-6" aria-hidden />
+            <span className="text-[0.7rem] font-semibold">Scan Food</span>
+          </span>
           <button
             type="button"
-            onClick={capture}
-            disabled={status !== "live"}
-            aria-label="Take photo"
-            className="flex size-[76px] items-center justify-center rounded-full border-4 border-white p-1 disabled:opacity-40"
+            onClick={() => pickInput.current?.click()}
+            className="flex h-[70px] flex-1 flex-col items-center justify-center gap-1 rounded-2xl bg-white/15 active:bg-white/25"
           >
-            <span className="size-full rounded-full bg-white active:scale-95" />
+            <ImageIcon className="size-6" aria-hidden />
+            <span className="text-[0.7rem] font-semibold">Gallery</span>
           </button>
-          <span className="size-14" aria-hidden />
         </div>
       </div>
     </div>
