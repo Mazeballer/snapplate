@@ -1,9 +1,10 @@
 "use client";
 
-import { Beef, Droplet, Flame, Minus, Pencil, Plus, Sparkles, Wheat, type LucideIcon, TriangleAlert } from "lucide-react";
+import { Minus, Pencil, Plus, Sparkles, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { HealthPanel } from "@/components/snapplate/health-panel";
+import { CaloriesCard, MacroCards, MoreNutrition } from "@/components/snapplate/meal-facts";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Switch } from "@/components/ui/switch";
@@ -18,18 +19,6 @@ const MEAL_TYPES: { value: MealType; label: string }[] = [
   { value: "dinner", label: "Dinner" },
   { value: "snack", label: "Snack" },
 ];
-
-function Macro({ label, value, colorVar, icon: Icon }: { label: string; value: number; colorVar: string; icon: LucideIcon }) {
-  return (
-    <div className="flex flex-1 flex-col items-center gap-1.5 rounded-[15px] border-[1.5px] border-input bg-card py-3">
-      <span className="flex size-8 items-center justify-center rounded-full" style={{ background: `color-mix(in oklab, var(${colorVar}) 16%, transparent)`, color: `var(${colorVar})` }}>
-        <Icon className="size-4" aria-hidden />
-      </span>
-      <span className="text-lg leading-none font-bold tabular-nums">{Math.round(value)}g</span>
-      <span className="text-xs text-muted-foreground">{label}</span>
-    </div>
-  );
-}
 
 function FixSheet({
   open,
@@ -177,20 +166,8 @@ export function ReviewMeal({
         ))}
       </div>
 
-      <div className="flex items-center gap-3 rounded-[15px] border-[1.5px] border-input bg-card p-4">
-        <span className="flex size-[50px] shrink-0 items-center justify-center rounded-[15px] bg-background">
-          <Flame className="size-7" style={{ color: "var(--warning)" }} fill="currentColor" strokeWidth={1.5} aria-hidden />
-        </span>
-        <span className="flex flex-col">
-          <span className="text-sm text-muted-foreground">Calories</span>
-          <span className="text-[34px] leading-9 font-bold tabular-nums">{formatNumber(totals.calories)}</span>
-        </span>
-      </div>
-      <div className="flex gap-2">
-        <Macro label="Protein" value={totals.proteinG} colorVar="--protein" icon={Beef} />
-        <Macro label="Carbs" value={totals.carbsG} colorVar="--carbs" icon={Wheat} />
-        <Macro label="Fats" value={totals.fatG} colorVar="--fat" icon={Droplet} />
-      </div>
+      <CaloriesCard calories={totals.calories} />
+      <MacroCards proteinG={totals.proteinG} carbsG={totals.carbsG} fatG={totals.fatG} />
 
       {draft.confidence === "low" ? (
         <p className="flex items-start gap-2 rounded-2xl bg-warning/20 p-3 text-sm" role="status">
@@ -222,20 +199,7 @@ export function ReviewMeal({
         </section>
       ) : null}
 
-      {fiber !== null || sugar !== null || sodium !== null ? (
-        <section className="grid grid-cols-3 gap-2" aria-label="More nutrition">
-          {[
-            { label: "Fiber", value: fiber, unit: "g" },
-            { label: "Sugar", value: sugar, unit: "g" },
-            { label: "Sodium", value: sodium, unit: "mg" },
-          ].map(({ label, value, unit }) => (
-            <div key={label} className="flex flex-col items-center gap-0.5 rounded-[15px] border-[1.5px] border-input bg-card py-3">
-              <span className="text-base font-bold tabular-nums">{value === null ? "-" : `${Math.round(value)}${unit}`}</span>
-              <span className="text-xs text-muted-foreground">{label}</span>
-            </div>
-          ))}
-        </section>
-      ) : null}
+      <MoreNutrition fiberG={fiber} sugarG={sugar} sodiumMg={sodium} />
 
       {showFavourite ? (
         <div className="flex items-center justify-between rounded-[15px] border-[1.5px] border-input bg-card p-4">

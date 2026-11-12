@@ -1,8 +1,9 @@
 "use client";
 
-import { Bookmark, Pencil, Trash2 } from "lucide-react";
+import { Bookmark, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { HealthPanel } from "@/components/snapplate/health-panel";
+import { CaloriesCard, MacroCards, MoreNutrition } from "@/components/snapplate/meal-facts";
 import { MealThumb } from "@/components/snapplate/meal-row";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,27 +18,6 @@ import { savedFromMeal } from "@/lib/meal";
 import { formatNumber } from "@/lib/format";
 import { formatClockTime, formatDate } from "@/lib/time";
 import type { Meal } from "@/lib/types";
-
-function Macro({ label, value, colorVar }: { label: string; value: number; colorVar: string }) {
-  return (
-    <div className="flex flex-1 flex-col items-center gap-0.5 rounded-2xl bg-card border border-border py-3">
-      <span className="text-lg font-semibold tabular-nums">{Math.round(value)}g</span>
-      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <span className="size-2 rounded-full" style={{ background: `var(${colorVar})` }} aria-hidden />
-        {label}
-      </span>
-    </div>
-  );
-}
-
-function Fact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-1 flex-col rounded-2xl bg-card border border-border px-3 py-2.5">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="font-semibold tabular-nums">{value}</span>
-    </div>
-  );
-}
 
 export function MealDetailDrawer({
   meal,
@@ -67,10 +47,10 @@ export function MealDetailDrawer({
       <DrawerContent>
         {meal ? (
           <>
-            <DrawerHeader className="flex-row items-center gap-3 pt-2 text-left">
+            <DrawerHeader className="flex-row items-center gap-3 pt-2 pb-3 text-left">
               <MealThumb meal={meal} className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-muted text-4xl" />
               <div className="min-w-0">
-                <DrawerTitle className="text-xl leading-tight font-semibold">{meal.name}</DrawerTitle>
+                <DrawerTitle className="text-[20px] leading-tight font-bold">{meal.name}</DrawerTitle>
                 <DrawerDescription>
                   {formatDate(meal.logDate)} · {formatClockTime(meal.loggedAt)}
                 </DrawerDescription>
@@ -78,33 +58,15 @@ export function MealDetailDrawer({
             </DrawerHeader>
 
             <div className="flex flex-col gap-5 overflow-y-auto px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-              <div className="flex items-baseline justify-center gap-1.5 pt-1">
-                <span className="text-5xl font-semibold tracking-tight tabular-nums">
-                  {formatNumber(meal.calories)}
-                </span>
-                <span className="text-muted-foreground">calories</span>
-              </div>
-
-              <div className="flex gap-2">
-                <Macro label="Protein" value={meal.proteinG} colorVar="--protein" />
-                <Macro label="Carbs" value={meal.carbsG} colorVar="--carbs" />
-                <Macro label="Fat" value={meal.fatG} colorVar="--fat" />
-              </div>
-
-              {meal.fiberG !== null || meal.sugarG !== null || meal.sodiumMg !== null ? (
-                <div className="flex gap-2">
-                  {meal.fiberG !== null ? <Fact label="Fibre" value={`${Math.round(meal.fiberG)}g`} /> : null}
-                  {meal.sugarG !== null ? <Fact label="Sugar" value={`${Math.round(meal.sugarG)}g`} /> : null}
-                  {meal.sodiumMg !== null ? <Fact label="Sodium" value={`${formatNumber(meal.sodiumMg)}mg`} /> : null}
-                </div>
-              ) : null}
+              <CaloriesCard calories={meal.calories} />
+              <MacroCards proteinG={meal.proteinG} carbsG={meal.carbsG} fatG={meal.fatG} />
 
               {meal.healthScore !== null ? <HealthPanel score={meal.healthScore} factors={meal.factors} /> : null}
 
               {meal.items.length > 0 ? (
                 <section className="flex flex-col gap-2" aria-label="Ingredients">
-                  <h3 className="font-semibold">Ingredients</h3>
-                  <ul className="flex flex-col divide-y divide-border rounded-2xl bg-card border border-border px-4">
+                  <h3 className="text-lg font-bold">Ingredients</h3>
+                  <ul className="flex flex-col divide-y divide-border rounded-[15px] border-[1.5px] border-input bg-card px-4">
                     {meal.items.map((item) => (
                       <li key={item.id} className="flex items-center justify-between gap-3 py-3">
                         <span className="min-w-0">
@@ -122,11 +84,13 @@ export function MealDetailDrawer({
                 </section>
               ) : null}
 
+              <MoreNutrition fiberG={meal.fiberG} sugarG={meal.sugarG} sodiumMg={meal.sodiumMg} />
+
               <Button
                 type="button"
                 variant="outline"
                 size="lg"
-                className="h-12 gap-2 rounded-full"
+                className="h-12 gap-2 rounded-full border-[1.5px] border-input"
                 disabled={saveFavourite.isPending}
                 onClick={() =>
                   saveFavourite.mutate(savedFromMeal(meal), {
@@ -144,11 +108,11 @@ export function MealDetailDrawer({
                   type="button"
                   variant="outline"
                   size="lg"
-                  className="flex-1 gap-2"
+                  className="flex-1 gap-2 border-[1.5px] border-input"
                   onClick={() => toast("Coming soon", { description: "Fixing a result with AI is not built yet." })}
                 >
-                  <Pencil aria-hidden />
-                  Fix result
+                  <Sparkles aria-hidden />
+                  Fix Results
                 </Button>
                 <Button
                   type="button"
