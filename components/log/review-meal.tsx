@@ -1,6 +1,6 @@
 "use client";
 
-import { Minus, Pencil, Plus, TriangleAlert } from "lucide-react";
+import { Beef, Droplet, Flame, Minus, Pencil, Plus, Sparkles, Wheat, type LucideIcon, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { HealthPanel } from "@/components/snapplate/health-panel";
@@ -19,14 +19,14 @@ const MEAL_TYPES: { value: MealType; label: string }[] = [
   { value: "snack", label: "Snack" },
 ];
 
-function Macro({ label, value, colorVar }: { label: string; value: number; colorVar: string }) {
+function Macro({ label, value, colorVar, icon: Icon }: { label: string; value: number; colorVar: string; icon: LucideIcon }) {
   return (
-    <div className="flex flex-1 flex-col items-center gap-0.5 rounded-2xl border border-border bg-card py-3">
-      <span className="text-lg font-semibold tabular-nums">{Math.round(value)}g</span>
-      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <span className="size-2 rounded-full" style={{ background: `var(${colorVar})` }} aria-hidden />
-        {label}
+    <div className="flex flex-1 flex-col items-center gap-1.5 rounded-[15px] border-[1.5px] border-input bg-card py-3">
+      <span className="flex size-8 items-center justify-center rounded-full" style={{ background: `color-mix(in oklab, var(${colorVar}) 16%, transparent)`, color: `var(${colorVar})` }}>
+        <Icon className="size-4" aria-hidden />
       </span>
+      <span className="text-lg leading-none font-bold tabular-nums">{Math.round(value)}g</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
     </div>
   );
 }
@@ -95,6 +95,10 @@ export function ReviewMeal({
   showFavourite?: boolean;
 }) {
   const totals = draftTotals(draft);
+  const scale = draft.servings;
+  const fiber = draft.fiberG === null ? null : draft.fiberG * scale;
+  const sugar = draft.sugarG === null ? null : draft.sugarG * scale;
+  const sodium = draft.sodiumMg === null ? null : draft.sodiumMg * scale;
   const [fixOpen, setFixOpen] = useState(false);
   const [fixing, setFixing] = useState(false);
 
@@ -121,18 +125,39 @@ export function ReviewMeal({
         </div>
       ) : null}
 
-      <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-muted-foreground">Name</span>
-        <span className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 focus-within:border-foreground">
+      <div className="flex items-center gap-3">
+        <span className="flex min-w-0 flex-1 items-center gap-2">
           <input
             value={draft.name}
             onChange={(e) => onChange({ ...draft, name: e.target.value.slice(0, 120) })}
+            placeholder="Tap to name"
             aria-label="Meal name"
-            className="h-12 w-full min-w-0 bg-transparent text-base font-semibold outline-none"
+            className="h-11 w-full min-w-0 bg-transparent text-[18px] font-bold text-ellipsis outline-none placeholder:text-muted-foreground"
           />
           <Pencil className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         </span>
-      </label>
+        <div className="flex shrink-0 items-center gap-1 rounded-full border-[1.5px] border-input bg-card p-1">
+          <button
+            type="button"
+            aria-label="Fewer servings"
+            onClick={() => onChange({ ...draft, servings: stepServings(draft.servings, -1) })}
+            className="flex size-8 items-center justify-center rounded-full bg-muted active:bg-border"
+          >
+            <Minus className="size-4" aria-hidden />
+          </button>
+          <span className="min-w-8 text-center text-base font-bold tabular-nums" aria-live="polite">
+            {draft.servings}
+          </span>
+          <button
+            type="button"
+            aria-label="More servings"
+            onClick={() => onChange({ ...draft, servings: stepServings(draft.servings, 1) })}
+            className="flex size-8 items-center justify-center rounded-full bg-muted active:bg-border"
+          >
+            <Plus className="size-4" aria-hidden />
+          </button>
+        </div>
+      </div>
 
       <div role="radiogroup" aria-label="Meal" className="grid grid-cols-4 gap-1.5">
         {MEAL_TYPES.map((t) => (
@@ -152,39 +177,19 @@ export function ReviewMeal({
         ))}
       </div>
 
-      <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-3">
-        <span className="pl-1 font-medium">Servings</span>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            aria-label="Fewer servings"
-            onClick={() => onChange({ ...draft, servings: stepServings(draft.servings, -1) })}
-            className="flex size-10 items-center justify-center rounded-full bg-muted active:bg-border"
-          >
-            <Minus className="size-4" aria-hidden />
-          </button>
-          <span className="w-10 text-center text-lg font-semibold tabular-nums" aria-live="polite">
-            {draft.servings}
-          </span>
-          <button
-            type="button"
-            aria-label="More servings"
-            onClick={() => onChange({ ...draft, servings: stepServings(draft.servings, 1) })}
-            className="flex size-10 items-center justify-center rounded-full bg-muted active:bg-border"
-          >
-            <Plus className="size-4" aria-hidden />
-          </button>
-        </div>
-      </div>
-
-      <div className="flex items-baseline justify-center gap-1.5">
-        <span className="text-5xl font-semibold tracking-tight tabular-nums">{formatNumber(totals.calories)}</span>
-        <span className="text-muted-foreground">calories</span>
+      <div className="flex items-center gap-3 rounded-[15px] border-[1.5px] border-input bg-card p-4">
+        <span className="flex size-[50px] shrink-0 items-center justify-center rounded-[15px] bg-background">
+          <Flame className="size-7" style={{ color: "var(--warning)" }} fill="currentColor" strokeWidth={1.5} aria-hidden />
+        </span>
+        <span className="flex flex-col">
+          <span className="text-sm text-muted-foreground">Calories</span>
+          <span className="text-[34px] leading-9 font-bold tabular-nums">{formatNumber(totals.calories)}</span>
+        </span>
       </div>
       <div className="flex gap-2">
-        <Macro label="Protein" value={totals.proteinG} colorVar="--protein" />
-        <Macro label="Carbs" value={totals.carbsG} colorVar="--carbs" />
-        <Macro label="Fat" value={totals.fatG} colorVar="--fat" />
+        <Macro label="Protein" value={totals.proteinG} colorVar="--protein" icon={Beef} />
+        <Macro label="Carbs" value={totals.carbsG} colorVar="--carbs" icon={Wheat} />
+        <Macro label="Fats" value={totals.fatG} colorVar="--fat" icon={Droplet} />
       </div>
 
       {draft.confidence === "low" ? (
@@ -198,8 +203,8 @@ export function ReviewMeal({
 
       {draft.items.length > 0 ? (
         <section className="flex flex-col gap-2" aria-label="Ingredients">
-          <h3 className="font-semibold">Ingredients</h3>
-          <ul className="flex flex-col divide-y divide-border rounded-2xl border border-border bg-card px-4">
+          <h3 className="text-lg font-bold">Ingredients</h3>
+          <ul className="flex flex-col divide-y divide-border rounded-[15px] border-[1.5px] border-input bg-card px-4">
             {draft.items.map((item, i) => (
               <li key={`${item.name}-${i}`} className="flex items-center justify-between gap-3 py-3">
                 <span className="min-w-0">
@@ -217,8 +222,23 @@ export function ReviewMeal({
         </section>
       ) : null}
 
+      {fiber !== null || sugar !== null || sodium !== null ? (
+        <section className="grid grid-cols-3 gap-2" aria-label="More nutrition">
+          {[
+            { label: "Fiber", value: fiber, unit: "g" },
+            { label: "Sugar", value: sugar, unit: "g" },
+            { label: "Sodium", value: sodium, unit: "mg" },
+          ].map(({ label, value, unit }) => (
+            <div key={label} className="flex flex-col items-center gap-0.5 rounded-[15px] border-[1.5px] border-input bg-card py-3">
+              <span className="text-base font-bold tabular-nums">{value === null ? "-" : `${Math.round(value)}${unit}`}</span>
+              <span className="text-xs text-muted-foreground">{label}</span>
+            </div>
+          ))}
+        </section>
+      ) : null}
+
       {showFavourite ? (
-        <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-4">
+        <div className="flex items-center justify-between rounded-[15px] border-[1.5px] border-input bg-card p-4">
           <span className="pr-3">
             <span className="block font-medium">Save to my meals</span>
             <span className="block text-xs text-muted-foreground">Quickly log it again later.</span>
@@ -228,9 +248,9 @@ export function ReviewMeal({
       ) : null}
 
       {onFix ? (
-        <Button variant="outline" size="lg" className="h-12 gap-2 rounded-full" onClick={() => setFixOpen(true)}>
-          <Pencil aria-hidden />
-          Fix result
+        <Button variant="outline" size="lg" className="h-12 gap-2 rounded-full border-[1.5px] border-input" onClick={() => setFixOpen(true)}>
+          <Sparkles aria-hidden />
+          Fix Results
         </Button>
       ) : null}
 
