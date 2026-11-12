@@ -25,7 +25,7 @@ function DayRing({ summary }: { summary: DaySummary }) {
       width={SIZE}
       height={SIZE}
       viewBox={`0 0 ${SIZE} ${SIZE}`}
-      className="absolute inset-0 -rotate-90"
+      className="absolute top-0 left-0 -rotate-90"
       aria-hidden
     >
       {state === "empty" ? (
@@ -126,11 +126,11 @@ export function WeekStrip({
                 >
                   {formatWeekday(date)}
                 </span>
-                <span className="relative flex" style={{ width: SIZE, height: SIZE }}>
+                <span className="relative block shrink-0" style={{ width: SIZE, height: SIZE }}>
                   <DayRing summary={summaryFor(date)} />
                   <span
                     className={cn(
-                      "m-auto flex size-[25px] items-center justify-center rounded-full text-[0.8rem] font-semibold tabular-nums",
+                      "absolute inset-1 flex items-center justify-center rounded-full text-[0.8rem] leading-none font-semibold tabular-nums",
                       isSelected && "bg-foreground text-background",
                       !isSelected && isToday && "text-brand",
                     )}
