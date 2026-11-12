@@ -6,16 +6,18 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ActivityCard } from "@/components/snapplate/activity-card";
 import { EmptyState } from "@/components/snapplate/empty-state";
+import { ExerciseRow } from "@/components/snapplate/exercise-row";
 import { HealthChip } from "@/components/snapplate/health-chip";
 import { MealDetailDrawer } from "@/components/snapplate/meal-detail-drawer";
 import { MealRow } from "@/components/snapplate/meal-row";
 import { MockBanner } from "@/components/snapplate/mock-banner";
 import { CalorieCard, MacroRingCard } from "@/components/snapplate/ring-cards";
+import { useSelectedDate } from "@/components/snapplate/selected-date";
 import { StreakChip } from "@/components/snapplate/streak-chip";
 import { WaterCard } from "@/components/snapplate/water-card";
 import { WeekStrip, type DaySummary } from "@/components/snapplate/week-strip";
 import { Button } from "@/components/ui/button";
-import { useActivity, useMeals, useProfile, useWater } from "@/hooks/use-data";
+import { useActivity, useExercise, useMeals, useProfile, useWater } from "@/hooks/use-data";
 import { useToday } from "@/hooks/use-today";
 import { HISTORY_DAYS } from "@/lib/constants";
 import { formatNumber } from "@/lib/format";
@@ -43,7 +45,7 @@ function HomeSkeleton() {
 export function HomeScreen() {
   const router = useRouter();
   const today = useToday();
-  const [picked, setPicked] = useState<LogDate | null>(null);
+  const { picked, setPicked } = useSelectedDate();
   const [detail, setDetail] = useState<{ meal: Meal; open: boolean } | null>(null);
 
   const from = today ? addDays(today, -(HISTORY_DAYS - 1)) : null;
@@ -51,6 +53,7 @@ export function HomeScreen() {
   const mealsQuery = useMeals(from, today);
   const waterQuery = useWater(from, today);
   const activityQuery = useActivity(from, today);
+  const exerciseQuery = useExercise(from, today);
 
   const meals = mealsQuery.data;
   const byDate = useMemo(() => groupByDate(meals ?? []), [meals]);
@@ -102,7 +105,10 @@ export function HomeScreen() {
   const dayMeals = byDate.get(date) ?? [];
   const totals = sumMeals(dayMeals);
   const activity = activityQuery.data?.find((a) => a.logDate === date);
-  const burned = profile.addBurnedCalories ? (activity?.activeKcal ?? 0) : 0;
+  const dayExercise = (exerciseQuery.data ?? []).filter((e) => e.logDate === date);
+  // Calories burned: what Apple Health reports plus the workouts logged by hand or by AI.
+  const burnedTotal = (activity?.activeKcal ?? 0) + dayExercise.reduce((sum, e) => sum + e.calories, 0);
+  const burned = profile.addBurnedCalories ? burnedTotal : 0;
 
   let rollover = 0;
   if (profile.rolloverCalories) {
@@ -180,9 +186,9 @@ export function HomeScreen() {
       <section className="grid grid-cols-2 gap-2" aria-label="Activity and water">
         <ActivityCard
           steps={activity?.steps ?? 0}
-          activeKcal={activity?.activeKcal ?? 0}
+          activeKcal={burnedTotal}
           stepGoal={profile.stepGoal}
-          hasData={activity !== undefined}
+          hasData={activity !== undefined || burnedTotal > 0}
         />
         <WaterCard ml={waterMl} canAdd={date === today} />
       </section>
@@ -210,6 +216,19 @@ export function HomeScreen() {
           </EmptyState>
         )}
       </section>
+
+      {dayExercise.length > 0 ? (
+        <section className="flex flex-col gap-3" aria-label="Workouts">
+          <h2 className="text-lg font-bold">Workouts</h2>
+          <ul className="flex flex-col gap-2">
+            {dayExercise.map((exercise) => (
+              <li key={exercise.id}>
+                <ExerciseRow exercise={exercise} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <MealDetailDrawer
         meal={detail?.meal ?? null}

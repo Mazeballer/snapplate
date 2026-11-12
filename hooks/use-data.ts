@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { dataSource, type SaveProfileInput } from "@/lib/data";
 import type { LogDate } from "@/lib/time";
+import type { ExerciseInput, MealInput, SavedMealInput } from "@/lib/types";
 
 export function useProfile() {
   return useQuery({ queryKey: ["profile"], queryFn: () => dataSource.getProfile() });
@@ -47,6 +48,58 @@ export function useSaveProfile() {
         queryClient.invalidateQueries({ queryKey: ["weights"] }),
       ]);
     },
+  });
+}
+
+export function useSavedMeals() {
+  return useQuery({ queryKey: ["saved-meals"], queryFn: () => dataSource.getSavedMeals() });
+}
+
+export function useExercise(from: LogDate | null, to: LogDate | null) {
+  return useQuery({
+    queryKey: ["exercise", from, to],
+    queryFn: () => dataSource.getExercise(from!, to!),
+    enabled: from !== null && to !== null,
+  });
+}
+
+export function useAddMeal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: MealInput) => dataSource.addMeal(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["meals"] }),
+  });
+}
+
+export function useSaveFavourite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SavedMealInput) => dataSource.saveFavourite(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["saved-meals"] }),
+  });
+}
+
+export function useDeleteSavedMeal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => dataSource.deleteSavedMeal(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["saved-meals"] }),
+  });
+}
+
+export function useAddExercise() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ExerciseInput) => dataSource.addExercise(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["exercise"] }),
+  });
+}
+
+export function useDeleteExercise() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => dataSource.deleteExercise(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["exercise"] }),
   });
 }
 

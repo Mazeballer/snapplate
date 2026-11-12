@@ -4,7 +4,16 @@
  */
 import { createClient } from "@/lib/supabase/client";
 import type { LogDate } from "@/lib/time";
-import type { DailyActivity, Meal, MealItem, Profile, WeightLog } from "@/lib/types";
+import type {
+  DailyActivity,
+  Exercise,
+  HealthFactor,
+  Meal,
+  MealItem,
+  Profile,
+  SavedMeal,
+  WeightLog,
+} from "@/lib/types";
 import type { DataSource } from "./source";
 
 // Rows come back with snake_case column names. These small shapes name only what is used.
@@ -35,8 +44,29 @@ interface MealRow {
   sodium_mg: number | null;
   servings: number;
   health_score: number | null;
+  health_factors: HealthFactor[] | null;
+  emoji: string | null;
+  image_path: string | null;
   source: Meal["source"];
   meal_items: MealItemRow[] | null;
+}
+
+interface SavedMealRow {
+  id: string;
+  name: string;
+  payload: Omit<SavedMeal, "id" | "createdAt" | "name">;
+  created_at: string;
+}
+
+interface ExerciseRow {
+  id: string;
+  logged_at: string;
+  log_date: string;
+  name: string;
+  duration_min: number | null;
+  intensity: Exercise["intensity"];
+  calories: number;
+  source: Exercise["source"];
 }
 
 interface ProfileRow {
@@ -84,15 +114,15 @@ function toItem(row: MealItemRow): MealItem {
   };
 }
 
-function toMeal(row: MealRow): Meal {
+function toMeal(row: MealRow, imageUrls: Map<string, string>): Meal {
   return {
     id: row.id,
     loggedAt: row.logged_at,
     logDate: row.log_date,
     mealType: row.meal_type,
     name: row.name,
-    emoji: null,
-    imageUrl: null,
+    emoji: row.emoji,
+    imageUrl: row.image_path ? (imageUrls.get(row.image_path) ?? null) : null,
     calories: row.calories,
     proteinG: row.protein_g,
     carbsG: row.carbs_g,
@@ -102,7 +132,7 @@ function toMeal(row: MealRow): Meal {
     sodiumMg: row.sodium_mg,
     servings: row.servings,
     healthScore: row.health_score,
-    factors: [],
+    factors: row.health_factors ?? [],
     source: row.source,
     items: [...(row.meal_items ?? [])].sort((a, b) => a.position - b.position).map(toItem),
   };
@@ -154,7 +184,18 @@ export const supabaseDataSource: DataSource = {
       .lte("log_date", to)
       .order("logged_at", { ascending: true });
     if (error) fail("Could not load your meals", error);
-    return ((data ?? []) as MealRow[]).map(toMeal);
+    const rows = (data ?? []) as MealRow[];
+
+    // Photos live in a private bucket, so each gets a short-lived link.
+    const imageUrls = new Map<string, string>();
+    const paths = rows.map((r) => r.image_path).filter((p): p is string => p !== null);
+    if (paths.length > 0) {
+      const { data: signed } = await createClient().storage.from("meal-photos").createSignedUrls(paths, 3600);
+      for (const entry of signed ?? []) {
+        if (entry.path && entry.signedUrl) imageUrls.set(entry.path, entry.signedUrl);
+      }
+    }
+    return rows.map((r) => toMeal(r, imageUrls));
   },
 
   async getWeightLogs() {
@@ -243,6 +284,128 @@ export const supabaseDataSource: DataSource = {
         );
       if (weightError) fail("Could not save your weight", weightError);
     }
+  },
+
+  async getSavedMeals() {
+    const { data, error } = await createClient()
+      .from("saved_meals")
+      .select("id, name, payload, created_at")
+      .order("created_at", { ascending: false });
+    if (error) fail("Could not load your saved meals", error);
+    return ((data ?? []) as SavedMealRow[]).map(
+      (r): SavedMeal => ({ ...r.payload, id: r.id, name: r.name, createdAt: r.created_at }),
+    );
+  },
+
+  async getExercise(from: LogDate, to: LogDate) {
+    const { data, error } = await createClient()
+      .from("exercise_logs")
+      .select("*")
+      .gte("log_date", from)
+      .lte("log_date", to)
+      .order("logged_at", { ascending: true });
+    if (error) fail("Could not load your workouts", error);
+    return ((data ?? []) as ExerciseRow[]).map(
+      (r): Exercise => ({
+        id: r.id,
+        loggedAt: r.logged_at,
+        logDate: r.log_date,
+        name: r.name,
+        durationMin: r.duration_min,
+        intensity: r.intensity,
+        calories: r.calories,
+        source: r.source,
+      }),
+    );
+  },
+
+  async addMeal(m) {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("meals")
+      .insert({
+        logged_at: m.loggedAt,
+        meal_type: m.mealType,
+        name: m.name,
+        emoji: m.emoji,
+        image_path: m.imagePath,
+        calories: m.calories,
+        protein_g: m.proteinG,
+        carbs_g: m.carbsG,
+        fat_g: m.fatG,
+        fiber_g: m.fiberG,
+        sugar_g: m.sugarG,
+        sodium_mg: m.sodiumMg,
+        servings: m.servings,
+        health_score: m.healthScore,
+        health_factors: m.factors,
+        source: m.source,
+        ai_trace_id: m.aiTraceId,
+      })
+      .select("id")
+      .single();
+    if (error || !data) fail("Could not save the meal", error);
+
+    if (m.items.length > 0) {
+      const { error: itemsError } = await supabase.from("meal_items").insert(
+        m.items.map((item, position) => ({
+          meal_id: data.id,
+          position,
+          name: item.name,
+          quantity: item.quantity,
+          unit: item.unit,
+          calories: item.calories,
+          protein_g: item.proteinG,
+          carbs_g: item.carbsG,
+          fat_g: item.fatG,
+        })),
+      );
+      if (itemsError) {
+        // Don't leave a meal behind without its ingredients.
+        await supabase.from("meals").delete().eq("id", data.id);
+        fail("Could not save the meal's ingredients", itemsError);
+      }
+    }
+  },
+
+  async saveFavourite(input) {
+    const { name, ...payload } = input;
+    const { error } = await createClient().from("saved_meals").insert({ name, payload });
+    if (error) fail("Could not save the favourite", error);
+  },
+
+  async deleteSavedMeal(id: string) {
+    const { error } = await createClient().from("saved_meals").delete().eq("id", id);
+    if (error) fail("Could not remove the favourite", error);
+  },
+
+  async addExercise(input) {
+    const { error } = await createClient().from("exercise_logs").insert({
+      logged_at: input.loggedAt,
+      name: input.name,
+      duration_min: input.durationMin,
+      intensity: input.intensity,
+      calories: input.calories,
+      source: input.source,
+    });
+    if (error) fail("Could not save the workout", error);
+  },
+
+  async deleteExercise(id: string) {
+    const { error } = await createClient().from("exercise_logs").delete().eq("id", id);
+    if (error) fail("Could not delete the workout", error);
+  },
+
+  async uploadMealPhoto(photo: Blob) {
+    const supabase = createClient();
+    const { data } = await supabase.auth.getSession();
+    const userId = data.session?.user.id;
+    if (!userId) throw new Error("Please sign in again.");
+    // Photos are filed under the signed-in user's id; storage rules only allow that folder.
+    const path = `${userId}/${crypto.randomUUID()}.jpg`;
+    const { error } = await supabase.storage.from("meal-photos").upload(path, photo, { contentType: "image/jpeg" });
+    if (error) fail("Could not upload the photo", error);
+    return path;
   },
 
   async addWater(amountMl: number) {

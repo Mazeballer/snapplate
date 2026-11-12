@@ -17,16 +17,23 @@ import {
   dateRange,
   minutesSinceMidnight,
   startOfLogDate,
+  toLogDate,
   todayLogDate,
   type LogDate,
 } from "@/lib/time";
 import type {
   DailyActivity,
+  Exercise,
+  ExerciseInput,
   HealthFactor,
   Meal,
+  MealDraft,
+  MealInput,
   MealItem,
   MealType,
   Profile,
+  SavedMeal,
+  SavedMealInput,
   WeightLog,
 } from "@/lib/types";
 import type { DataSource } from "./source";
@@ -550,6 +557,129 @@ function buildWater(today: LogDate): Map<LogDate, number> {
 
 // --- the data source ------------------------------------------------------------------------
 
+// --- saved meals, workouts and sample AI answers ---------------------------------------------------
+
+const ALL_DISHES: Dish[] = [...BREAKFASTS, ...LUNCHES, ...DINNERS, ...SNACKS];
+
+function dishItems(dish: Dish) {
+  return dish.items.map(([name, qty, unit, kcal, p, c, f]) => ({
+    name,
+    quantity: qty,
+    unit,
+    calories: kcal,
+    proteinG: p,
+    carbsG: c,
+    fatG: f,
+  }));
+}
+
+function dishDraft(dish: Dish, source: "photo" | "text"): MealDraft {
+  const items = dishItems(dish);
+  const sum = (key: "calories" | "proteinG" | "carbsG" | "fatG") => items.reduce((t, i) => t + i[key], 0);
+  return {
+    name: dish.name,
+    emoji: dish.emoji,
+    mealType: dish.type,
+    imagePath: null,
+    imagePreview: null,
+    source,
+    aiTraceId: "preview",
+    confidence: "medium",
+    calories: sum("calories"),
+    proteinG: sum("proteinG"),
+    carbsG: sum("carbsG"),
+    fatG: sum("fatG"),
+    fiberG: dish.fiberG,
+    sugarG: dish.sugarG,
+    sodiumMg: dish.sodiumMg,
+    servings: 1,
+    healthScore: dish.score,
+    factors: dish.factors,
+    items,
+  };
+}
+
+/** A sample "AI" answer for preview mode: the best-matching dish for the words, or a random one. */
+export function mockAnalyzeMeal(text: string | null, source: "photo" | "text"): MealDraft {
+  const words = (text ?? "").toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 2);
+  let best: Dish | null = null;
+  let bestScore = 0;
+  for (const dish of ALL_DISHES) {
+    const hay = `${dish.name} ${dish.items.map((i) => i[0]).join(" ")}`.toLowerCase();
+    const score = words.filter((w) => hay.includes(w)).length;
+    if (score > bestScore) {
+      best = dish;
+      bestScore = score;
+    }
+  }
+  const r = rng(`analyze-${text ?? ""}-${Date.now()}`);
+  return dishDraft(best ?? pick(ALL_DISHES, r), source);
+}
+
+const MET: [RegExp, number, string][] = [
+  [/run|jog/i, 9.8, "Running"],
+  [/swim/i, 7, "Swimming"],
+  [/cycl|bike/i, 7.5, "Cycling"],
+  [/walk/i, 3.8, "Walking"],
+  [/yoga|stretch|pilates/i, 3, "Yoga"],
+  [/weight|lift|gym|strength/i, 5, "Weight training"],
+  [/hiit|circuit/i, 8, "HIIT"],
+  [/football|basketball|badminton|tennis|futsal/i, 7, "Sports"],
+];
+
+/** A sample "AI" estimate for a workout, from a standard MET table. Preview mode only. */
+export function mockAnalyzeExercise(text: string, weightKg: number): ExerciseInput | null {
+  const found = MET.find(([re]) => re.test(text));
+  if (!found) return null;
+  const minutes = Math.min(600, Math.max(5, Number(/(\d{1,3})\s*(?:min|m\b)/i.exec(text)?.[1] ?? 30)));
+  const hours = Number(/(\d{1,2}(?:\.\d)?)\s*(?:h|hr|hour)/i.exec(text)?.[1] ?? 0);
+  const duration = hours > 0 ? Math.round(hours * 60) : minutes;
+  const [, met, name] = found;
+  return {
+    loggedAt: new Date().toISOString(),
+    name,
+    durationMin: duration,
+    intensity: met >= 8 ? "high" : met >= 5 ? "medium" : "low",
+    calories: Math.round((met * weightKg * duration) / 60),
+    source: "text",
+  };
+}
+
+function buildSavedMeals(): SavedMeal[] {
+  return [ALL_DISHES[2]!, ALL_DISHES[5]!, ALL_DISHES[9]!, ALL_DISHES[13]!].map((dish, i) => {
+    const d = dishDraft(dish, "text");
+    return {
+      id: `saved-${i}`,
+      name: d.name,
+      emoji: d.emoji,
+      calories: d.calories,
+      proteinG: d.proteinG,
+      carbsG: d.carbsG,
+      fatG: d.fatG,
+      fiberG: d.fiberG,
+      sugarG: d.sugarG,
+      sodiumMg: d.sodiumMg,
+      healthScore: d.healthScore,
+      factors: d.factors,
+      items: d.items,
+      createdAt: new Date(Date.now() - i * 86_400_000).toISOString(),
+    };
+  });
+}
+
+function buildExercise(today: LogDate): Exercise[] {
+  const at = (date: LogDate, minutes: number) =>
+    new Date(startOfLogDate(date).getTime() + minutes * 60_000).toISOString();
+  return [
+    { id: "ex-1", daysAgo: 1, minutes: 18 * 60, name: "Running", durationMin: 35, intensity: "high" as const, calories: 380 },
+    { id: "ex-2", daysAgo: 3, minutes: 7 * 60, name: "Weight training", durationMin: 50, intensity: "medium" as const, calories: 290 },
+    { id: "ex-3", daysAgo: 0, minutes: 7 * 60 + 30, name: "Walking", durationMin: 40, intensity: "low" as const, calories: 160 },
+  ].map(({ id, daysAgo, minutes, ...rest }) => {
+    const date = addDays(today, -daysAgo);
+    return { id, loggedAt: at(date, minutes), logDate: date, source: "manual" as const, ...rest };
+  });
+}
+
 interface Store {
   today: LogDate;
   meals: Meal[];
@@ -557,6 +687,8 @@ interface Store {
   activity: DailyActivity[];
   water: Map<LogDate, number>;
   profile: Profile;
+  savedMeals: SavedMeal[];
+  exercise: Exercise[];
 }
 
 let store: Store | null = null;
@@ -572,6 +704,8 @@ function getStore(): Store {
       activity: buildActivity(today),
       water: buildWater(today),
       profile: buildProfile(today, weights[weights.length - 1]!.weightKg),
+      savedMeals: buildSavedMeals(),
+      exercise: buildExercise(today),
     };
   }
   return store;
@@ -613,6 +747,67 @@ export const mockDataSource: DataSource = {
         a.logDate < b.logDate ? -1 : 1,
       );
     }
+  },
+  async getSavedMeals() {
+    await delay();
+    return getStore().savedMeals;
+  },
+  async getExercise(from, to) {
+    await delay();
+    return getStore().exercise.filter((e) => e.logDate >= from && e.logDate <= to);
+  },
+  async addMeal(input: MealInput) {
+    await delay(300);
+    const s = getStore();
+    const id = `new-${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+    const meal: Meal = {
+      id,
+      loggedAt: input.loggedAt,
+      logDate: toLogDate(input.loggedAt),
+      mealType: input.mealType,
+      name: input.name,
+      emoji: input.emoji,
+      // In preview a photo is a local blob link, usable as-is.
+      imageUrl: input.imagePath,
+      calories: input.calories,
+      proteinG: input.proteinG,
+      carbsG: input.carbsG,
+      fatG: input.fatG,
+      fiberG: input.fiberG,
+      sugarG: input.sugarG,
+      sodiumMg: input.sodiumMg,
+      servings: input.servings,
+      healthScore: input.healthScore,
+      factors: input.factors,
+      source: input.source,
+      items: input.items.map((item, i): MealItem => ({ id: `${id}-${i}`, ...item })),
+    };
+    s.meals = [...s.meals, meal].sort((a, b) => (a.loggedAt < b.loggedAt ? -1 : 1));
+  },
+  async saveFavourite(input: SavedMealInput) {
+    await delay(150);
+    const s = getStore();
+    s.savedMeals = [{ ...input, id: `saved-${Date.now()}`, createdAt: new Date().toISOString() }, ...s.savedMeals];
+  },
+  async deleteSavedMeal(id) {
+    await delay(120);
+    const s = getStore();
+    s.savedMeals = s.savedMeals.filter((m) => m.id !== id);
+  },
+  async addExercise(input) {
+    await delay(200);
+    const s = getStore();
+    const entry: Exercise = { id: `ex-${Date.now()}`, logDate: toLogDate(input.loggedAt), ...input };
+    s.exercise = [...s.exercise, entry].sort((a, b) => (a.loggedAt < b.loggedAt ? -1 : 1));
+  },
+  async deleteExercise(id) {
+    await delay(120);
+    const s = getStore();
+    s.exercise = s.exercise.filter((e) => e.id !== id);
+  },
+  async uploadMealPhoto(photo) {
+    await delay(150);
+    return URL.createObjectURL(photo);
   },
   async addWater(amountMl) {
     await delay(120);

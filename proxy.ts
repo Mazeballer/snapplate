@@ -22,6 +22,10 @@ export async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
   if (!signedIn && !isPublic(pathname)) {
+    // An API call wants an answer, not a login page.
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    }
     const redirect = NextResponse.redirect(new URL("/login", request.url));
     // Keep any cookies the session refresh just set.
     for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie);

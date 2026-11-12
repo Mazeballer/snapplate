@@ -1,5 +1,15 @@
 import type { LogDate } from "@/lib/time";
-import type { DailyActivity, Meal, Profile, WeightLog } from "@/lib/types";
+import type {
+  DailyActivity,
+  Exercise,
+  ExerciseInput,
+  Meal,
+  MealInput,
+  Profile,
+  SavedMeal,
+  SavedMealInput,
+  WeightLog,
+} from "@/lib/types";
 
 /** A profile to save, plus an optional weigh-in to record on the same date. */
 export interface SaveProfileInput {
@@ -23,7 +33,16 @@ export interface DataSource {
   /** Millilitres of water per log date, for dates that have any. */
   getWater(from: LogDate, to: LogDate): Promise<Record<LogDate, number>>;
   getActivity(from: LogDate, to: LogDate): Promise<DailyActivity[]>;
+  getSavedMeals(): Promise<SavedMeal[]>;
+  getExercise(from: LogDate, to: LogDate): Promise<Exercise[]>;
   saveProfile(input: SaveProfileInput): Promise<void>;
-  addWater(amountMl: number): Promise<void>;
+  addMeal(input: MealInput): Promise<void>;
   deleteMeal(id: string): Promise<void>;
+  saveFavourite(input: SavedMealInput): Promise<void>;
+  deleteSavedMeal(id: string): Promise<void>;
+  addExercise(input: ExerciseInput): Promise<void>;
+  deleteExercise(id: string): Promise<void>;
+  addWater(amountMl: number): Promise<void>;
+  /** Uploads a meal photo and returns where it is stored (a path, or a local URL in preview). */
+  uploadMealPhoto(photo: Blob): Promise<string>;
 }

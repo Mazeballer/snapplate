@@ -1,26 +1,39 @@
 "use client";
 
-import { CloudOff, Flame, Heart, Scale, Trophy, UtensilsCrossed } from "lucide-react";
+import { ArrowRight, Check, CloudOff, Flag, Flame, Heart, Scale, Trophy, UtensilsCrossed } from "lucide-react";
 import { useMemo, useState } from "react";
-import { EnergyBars, WeightChart } from "@/components/snapplate/charts";
 import { EmptyState } from "@/components/snapplate/empty-state";
+import { EnergyBars, WeightChart } from "@/components/snapplate/charts";
 import { MockBanner } from "@/components/snapplate/mock-banner";
+import { Segmented } from "@/components/snapplate/segmented";
+import { WeightSheet } from "@/components/snapplate/weight-sheet";
 import { Button } from "@/components/ui/button";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useMeals, useProfile, useWeightLogs } from "@/hooks/use-data";
 import { useToday } from "@/hooks/use-today";
+import { goalProgress, rangeStart, type WeightRange } from "@/lib/chart";
 import { HISTORY_DAYS } from "@/lib/constants";
-import { formatNumber, formatWeight, formatWeightChange, weightUnit, weightValue } from "@/lib/format";
+import { formatNumber, formatWeight, weightUnit, weightValue } from "@/lib/format";
 import { formatScore } from "@/lib/healthScore";
-import { bmi, bmiCategory, projectGoalDate, type BmiCategory } from "@/lib/nutrition";
+import { bmi, bmiCategory, type BmiCategory } from "@/lib/nutrition";
 import { ringState } from "@/lib/rings";
 import { currentStreak, longestStreak } from "@/lib/streak";
-import { addDays, dateRange, formatLongDate, formatShortDate, formatWeekday } from "@/lib/time";
+import { addDays, dateRange, formatLongDate, formatWeekday, weekdayIndex, type LogDate } from "@/lib/time";
 import { averageHealthScore, groupByDate, sumMeals } from "@/lib/totals";
 import { cn } from "@/lib/utils";
 
-type Range = "30" | "90" | "all";
-const RANGE_LABELS: Record<Range, string> = { "30": "30D", "90": "90D", all: "All" };
+const RANGE_OPTIONS: { value: WeightRange; label: string }[] = [
+  { value: "90D", label: "90D" },
+  { value: "6M", label: "6M" },
+  { value: "1Y", label: "1Y" },
+  { value: "ALL", label: "ALL" },
+];
+
+type Period = "7" | "14" | "30";
+const PERIOD_OPTIONS: { value: Period; label: string }[] = [
+  { value: "7", label: "7D" },
+  { value: "14", label: "14D" },
+  { value: "30", label: "30D" },
+];
 
 const BMI_SEGMENTS: { category: BmiCategory; label: string; from: number; to: number; color: string }[] = [
   { category: "underweight", label: "Under", from: 15, to: 18.5, color: "var(--fat)" },
@@ -28,7 +41,6 @@ const BMI_SEGMENTS: { category: BmiCategory; label: string; from: number; to: nu
   { category: "overweight", label: "Over", from: 25, to: 30, color: "var(--warning)" },
   { category: "obese", label: "Obese", from: 30, to: 40, color: "var(--danger)" },
 ];
-
 const BMI_MIN = 15;
 const BMI_MAX = 40;
 const BMI_LABELS: Record<BmiCategory, string> = {
@@ -38,24 +50,13 @@ const BMI_LABELS: Record<BmiCategory, string> = {
   obese: "Obese",
 };
 
-function Card({
-  title,
-  icon: Icon,
-  children,
-  aside,
-}: {
-  title: string;
-  icon: typeof Scale;
-  children: React.ReactNode;
-  aside?: React.ReactNode;
-}) {
+const CARD = "rounded-[20px] border border-border bg-card shadow-[0_1px_4px_rgba(30,26,36,0.06)]";
+
+function Section({ title, aside, children, label }: { title: string; aside?: React.ReactNode; children: React.ReactNode; label?: string }) {
   return (
-    <section className="flex flex-col gap-4 rounded-3xl bg-card border border-border p-5" aria-label={title}>
+    <section className={cn("flex flex-col gap-4 p-5", CARD)} aria-label={label ?? title}>
       <div className="flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 font-semibold">
-          <Icon className="size-4 text-muted-foreground" aria-hidden />
-          {title}
-        </h2>
+        <h2 className="text-lg font-bold">{title}</h2>
         {aside}
       </div>
       {children}
@@ -63,29 +64,81 @@ function Card({
   );
 }
 
-function StatTile({
-  icon: Icon,
-  value,
-  label,
-  color,
+/** "Your Weight", the goal bar, and a dark Log Weight button along the bottom of the card. */
+function WeightCard({
+  weightKg,
+  goalKg,
+  progress,
+  units,
+  onLog,
 }: {
-  icon: typeof Scale;
-  value: string;
-  label: string;
-  color: string;
+  weightKg: number | null;
+  goalKg: number | null;
+  progress: number | null;
+  units: "metric" | "imperial";
+  onLog: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-1 rounded-2xl bg-card border border-border p-4">
-      <Icon className="size-4" style={{ color }} aria-hidden />
-      <span className="text-2xl font-semibold tabular-nums">{value}</span>
-      <span className="text-xs text-muted-foreground">{label}</span>
-    </div>
+    <section className={cn("flex flex-col overflow-hidden", CARD)} aria-label="Your weight">
+      <div className="flex flex-1 flex-col items-center gap-2 px-3 pt-4 pb-3 text-center">
+        <span className="text-sm">Your Weight</span>
+        <span className="text-[27px] leading-8 font-bold tabular-nums">{weightKg === null ? "-" : formatWeight(weightKg, units)}</span>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted" aria-hidden>
+          <div className="h-full rounded-full bg-foreground transition-[width] duration-700" style={{ width: `${Math.max(4, (progress ?? 0) * 100)}%` }} />
+        </div>
+        <span className="text-sm text-muted-foreground">{goalKg === null ? "Maintaining" : `Goal ${formatWeight(goalKg, units)}`}</span>
+      </div>
+      <button
+        type="button"
+        onClick={onLog}
+        className="flex h-11 items-center justify-between bg-primary px-4 text-sm font-medium text-primary-foreground active:opacity-90"
+      >
+        Log Weight
+        <ArrowRight className="size-4" aria-hidden />
+      </button>
+    </section>
+  );
+}
+
+/** The streak with this week's check circles, Sunday to Saturday. */
+function StreakCard({ streak, today, logged }: { streak: number; today: LogDate; logged: ReadonlySet<LogDate> }) {
+  const sundayFirst = addDays(today, -((weekdayIndex(today) + 1) % 7));
+  const week = Array.from({ length: 7 }, (_, i) => addDays(sundayFirst, i));
+  return (
+    <section className={cn("flex flex-col items-center gap-1 px-3 py-4", CARD)} aria-label="Day streak">
+      <div className="relative flex size-14 items-center justify-center">
+        <Flame className="size-14" style={{ color: "var(--warning)" }} fill="currentColor" strokeWidth={1.5} aria-hidden />
+        <span className="absolute inset-x-0 bottom-1.5 text-center text-xl leading-none font-extrabold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.25)]">{streak}</span>
+      </div>
+      <span className="text-[1.05rem] font-semibold" style={{ color: "var(--carbs)" }}>
+        Day Streak
+      </span>
+      <ul className="mt-1.5 flex gap-1.5" aria-label="This week">
+        {week.map((date) => {
+          const done = logged.has(date);
+          return (
+            <li key={date} className="flex flex-col items-center gap-1">
+              <span className="text-[0.62rem] font-semibold text-muted-foreground">{formatWeekday(date).charAt(0)}</span>
+              <span
+                className={cn("flex size-[18px] items-center justify-center rounded-full", done ? "text-white" : "bg-muted")}
+                style={done ? { background: "var(--carbs)" } : undefined}
+              >
+                {done ? <Check className="size-3" strokeWidth={3.5} aria-hidden /> : null}
+              </span>
+              <span className="sr-only">{done ? "logged" : "not logged"}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
 export function ProgressScreen() {
   const today = useToday();
-  const [range, setRange] = useState<Range>("90");
+  const [range, setRange] = useState<WeightRange>("6M");
+  const [period, setPeriod] = useState<Period>("7");
+  const [weighIn, setWeighIn] = useState(false);
 
   const from = today ? addDays(today, -(HISTORY_DAYS - 1)) : null;
   const profileQuery = useProfile();
@@ -120,10 +173,10 @@ export function ProgressScreen() {
   const weights = weightsQuery.data;
   if (!today || profileQuery.isPending || weightsQuery.isPending || mealsQuery.isPending || !weights) {
     return (
-      <div className="flex flex-col gap-5" aria-busy="true" aria-label="Loading">
-        <h1 className="text-3xl font-semibold tracking-tight">Progress</h1>
-        <div className="h-72 animate-pulse rounded-3xl bg-muted" />
-        <div className="h-40 animate-pulse rounded-3xl bg-muted" />
+      <div className="flex flex-col gap-4" aria-busy="true" aria-label="Loading">
+        <h1 className="text-[32px] leading-[37px] font-bold tracking-tight">Progress</h1>
+        <div className="h-44 animate-pulse rounded-[20px] bg-muted" />
+        <div className="h-72 animate-pulse rounded-[20px] bg-muted" />
       </div>
     );
   }
@@ -131,166 +184,138 @@ export function ProgressScreen() {
   const units = profile?.units ?? "metric";
   const unit = weightUnit(units);
 
-  // --- weight -------------------------------------------------------------------------
-  const rangeStart = range === "all" ? "0000-01-01" : addDays(today, -Number(range));
-  const shown = weights.filter((w) => w.logDate >= rangeStart);
+  // --- weight --------------------------------------------------------------------------------
   const latest = weights[weights.length - 1];
-  const first = shown[0];
-  const change = latest && first ? latest.weightKg - first.weightKg : 0;
-  const goalKg = profile?.goalWeightKg ?? null;
-  const wantsLoss = profile?.goal === "lose";
-  const movingRight = profile?.goal === "maintain" || (wantsLoss ? change <= 0 : change >= 0);
-  const projection =
-    profile && latest && goalKg !== null && profile.goal && profile.paceKgPerWeek
-      ? projectGoalDate(profile.goal, latest.weightKg, goalKg, profile.paceKgPerWeek, today)
-      : null;
+  const start = weights[0];
+  const goalKg = profile?.goal && profile.goal !== "maintain" ? (profile.goalWeightKg ?? null) : null;
+  const progress = start && latest && goalKg !== null ? goalProgress(start.weightKg, latest.weightKg, goalKg) : null;
+  const since = rangeStart(range, today);
+  const shown = weights.filter((w) => since === null || w.logDate >= since);
+  const weightPoints = shown.map((w) => ({ date: w.logDate, value: weightValue(w.weightKg, units) }));
+  const trendingRight =
+    shown.length > 1 && profile?.goal
+      ? profile.goal === "lose"
+        ? shown[shown.length - 1]!.weightKg <= shown[0]!.weightKg
+        : profile.goal === "gain"
+          ? shown[shown.length - 1]!.weightKg >= shown[0]!.weightKg
+          : true
+      : true;
+  const cheer =
+    progress !== null && progress >= 1
+      ? "Goal reached! Time to set a new one."
+      : trendingRight
+        ? "Great job! Consistency is key, and it's showing."
+        : "Progress isn't a straight line. Keep logging and stay consistent.";
 
-  const weightPoints = shown.map((w) => ({
-    label: formatShortDate(w.logDate),
-    value: weightValue(w.weightKg, units),
-  }));
-  const goalValue = goalKg !== null ? weightValue(goalKg, units) : null;
-
-  // --- BMI ----------------------------------------------------------------------------
+  // --- BMI -----------------------------------------------------------------------------------
   const bmiValue = profile?.heightCm && latest ? bmi(latest.weightKg, profile.heightCm) : null;
-  const bmiPos =
-    bmiValue === null
-      ? 0
-      : ((Math.min(BMI_MAX, Math.max(BMI_MIN, bmiValue)) - BMI_MIN) / (BMI_MAX - BMI_MIN)) * 100;
   const category = bmiValue === null ? null : bmiCategory(bmiValue);
+  const bmiPos = bmiValue === null ? 0 : ((Math.min(BMI_MAX, Math.max(BMI_MIN, bmiValue)) - BMI_MIN) / (BMI_MAX - BMI_MIN)) * 100;
 
-  // --- energy (last 7 days) ------------------------------------------------------------
+  // --- calories ------------------------------------------------------------------------------
   const goal = profile?.calorieTarget ?? 2000;
-  const week = dateRange(addDays(today, -6), today).map((date) => {
+  const days = Number(period);
+  const recent = dateRange(addDays(today, -(days - 1)), today).map((date) => {
     const list = byDate.get(date) ?? [];
     const eaten = sumMeals(list).calories;
-    return {
-      day: formatWeekday(date),
-      kcal: Math.round(eaten),
-      state: ringState(eaten, goal, list.length > 0),
-    };
+    return { day: formatWeekday(date), kcal: Math.round(eaten), state: ringState(eaten, goal, list.length > 0) };
   });
-  const logged = week.filter((d) => d.state !== "empty");
-  const average = logged.length ? logged.reduce((sum, d) => sum + d.kcal, 0) / logged.length : 0;
-  const onTarget = week.filter((d) => d.state === "on").length;
+  const previous = dateRange(addDays(today, -(days * 2 - 1)), addDays(today, -days)).map((date) => {
+    const list = byDate.get(date) ?? [];
+    return list.length > 0 ? sumMeals(list).calories : null;
+  });
+  const loggedRecent = recent.filter((d) => d.state !== "empty");
+  const loggedPrevious = previous.filter((v): v is number => v !== null);
+  const average = loggedRecent.length ? loggedRecent.reduce((s, d) => s + d.kcal, 0) / loggedRecent.length : 0;
+  const previousAverage = loggedPrevious.length ? loggedPrevious.reduce((s, v) => s + v, 0) / loggedPrevious.length : 0;
+  const change = previousAverage > 0 && average > 0 ? ((average - previousAverage) / previousAverage) * 100 : null;
+  const changeIsGood = change === null ? true : profile?.goal === "gain" ? change >= 0 : profile?.goal === "lose" ? change <= 0 : Math.abs(change) <= 10;
+  const onTarget = recent.filter((d) => d.state === "on").length;
 
-  // --- stats ---------------------------------------------------------------------------
+  // --- streaks and stats -----------------------------------------------------------------------
+  const loggedDates = new Set(byDate.keys());
+  const streak = currentStreak(loggedDates, today);
+  const best = longestStreak(loggedDates);
   const last30 = (meals ?? []).filter((m) => m.logDate >= addDays(today, -29));
   const avgHealth = averageHealthScore(last30);
-  const streak = currentStreak(byDate.keys(), today);
-  const best = longestStreak(byDate.keys());
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <MockBanner />
-      <h1 className="text-3xl font-semibold tracking-tight">Progress</h1>
+      <h1 className="text-[32px] leading-[37px] font-bold tracking-tight">Progress</h1>
 
-      <section className="grid grid-cols-2 gap-3" aria-label="Highlights">
-        <StatTile icon={Flame} value={`${streak}`} label="Day streak" color="var(--warning)" />
-        <StatTile icon={Trophy} value={`${best}`} label="Longest streak" color="var(--brand)" />
-        <StatTile icon={UtensilsCrossed} value={`${last30.length}`} label="Meals, last 30 days" color="var(--fat)" />
-        <StatTile
-          icon={Heart}
-          value={avgHealth === null ? "-" : formatScore(avgHealth)}
-          label="Avg health score"
-          color="var(--danger)"
-        />
-      </section>
+      <div className="grid grid-cols-2 gap-3">
+        <WeightCard weightKg={latest?.weightKg ?? null} goalKg={goalKg} progress={progress} units={units} onLog={() => setWeighIn(true)} />
+        <StreakCard streak={streak} today={today} logged={loggedDates} />
+      </div>
 
-      <Card
-        title="Weight"
-        icon={Scale}
+      <Section
+        title="Weight Progress"
         aside={
-          <ToggleGroup
-            value={[range]}
-            onValueChange={(next) => {
-              const choice = next[0] as Range | undefined;
-              if (choice) setRange(choice);
-            }}
-            variant="outline"
-            spacing={0}
-            aria-label="Chart range"
-          >
-            {(Object.keys(RANGE_LABELS) as Range[]).map((r) => (
-              <ToggleGroupItem key={r} value={r} className="h-8 px-3 text-xs">
-                {RANGE_LABELS[r]}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
+          progress !== null ? (
+            <span className="flex items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 text-xs">
+              <Flag className="size-3.5" aria-hidden />
+              <span>
+                <b>{Math.round(progress * 100)}%</b> <span className="text-muted-foreground">of goal</span>
+              </span>
+            </span>
+          ) : null
         }
       >
-        {latest ? (
-          <>
-            <div className="flex items-end justify-between gap-3">
-              <div className="leading-tight">
-                <span className="text-4xl font-semibold tracking-tight tabular-nums">
-                  {weightValue(latest.weightKg, units)}
-                </span>
-                <span className="ml-1 text-muted-foreground">{unit}</span>
-                <span className="block text-xs text-muted-foreground">
-                  Weighed in {formatShortDate(latest.logDate)}
-                </span>
-              </div>
-              {first && shown.length > 1 ? (
-                <span
-                  className={cn(
-                    "rounded-full px-2.5 py-1 text-sm font-semibold tabular-nums",
-                    movingRight ? "bg-success/15 text-success" : "bg-warning/20 text-foreground",
-                  )}
-                >
-                  {formatWeightChange(change, units)}
-                </span>
-              ) : null}
-            </div>
-
-            {weightPoints.length > 1 ? (
-              <WeightChart
-                points={weightPoints}
-                goal={goalValue}
-                unit={unit}
-                summary={`Weight trend: ${weightPoints[0]!.value} ${unit} on ${weightPoints[0]!.label}, now ${weightPoints[weightPoints.length - 1]!.value} ${unit}.`}
-              />
-            ) : (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                Log another weigh-in to see your trend.
-              </p>
-            )}
-
-            {goalKg !== null ? (
-              <p className="text-sm text-muted-foreground">
-                Goal <span className="font-semibold text-foreground">{formatWeight(goalKg, units)}</span>
-                {" · "}
-                {Math.abs(latest.weightKg - goalKg) < 0.05
-                  ? "you're there"
-                  : `${formatWeight(Math.abs(latest.weightKg - goalKg), units)} to go`}
-                {projection ? (
-                  <>
-                    {" · on track for "}
-                    <span className="font-semibold text-foreground">{formatLongDate(projection.date)}</span>
-                  </>
-                ) : null}
-              </p>
-            ) : null}
-          </>
+        {weightPoints.length > 1 ? (
+          <WeightChart
+            points={weightPoints}
+            unit={unit}
+            summary={`Weight trend from ${weightPoints[0]!.value} ${unit} to ${weightPoints[weightPoints.length - 1]!.value} ${unit}.`}
+          />
         ) : (
-          <EmptyState icon={Scale} title="No weigh-ins yet">
-            Log your weight to start your chart.
-          </EmptyState>
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            {weights.length === 0 ? "Log your weight to start your chart." : "Log another weigh-in to see your trend."}
+          </p>
         )}
-      </Card>
+        <Segmented
+          label="Chart range"
+          options={RANGE_OPTIONS}
+          value={range}
+          onChange={setRange}
+          className="w-full [&_button]:min-w-0 [&_button]:flex-1"
+        />
+        {weightPoints.length > 1 ? (
+          <p className="rounded-xl bg-success/12 px-3 py-2.5 text-center text-[0.8rem] font-semibold text-success">{cheer}</p>
+        ) : null}
+        {goalKg !== null && latest ? (
+          <p className="text-center text-xs text-muted-foreground">
+            {Math.abs(latest.weightKg - goalKg) < 0.05
+              ? "You're at your goal weight."
+              : `${formatWeight(Math.abs(latest.weightKg - goalKg), units)} to go to ${formatWeight(goalKg, units)}.`}
+          </p>
+        ) : null}
+      </Section>
+
+      <Section
+        title="Daily Average Calories"
+        aside={<Segmented label="Period" options={PERIOD_OPTIONS} value={period} onChange={setPeriod} className="[&_button]:h-8 [&_button]:min-w-0 [&_button]:px-2.5 [&_button]:text-xs" />}
+      >
+        <div className="flex items-baseline gap-2">
+          <span className="text-[34px] leading-9 font-bold tracking-tight tabular-nums">{formatNumber(average)}</span>
+          <span className="text-muted-foreground">cal</span>
+          {change !== null ? (
+            <span className={cn("text-sm font-semibold", changeIsGood ? "text-success" : "text-warning")}>
+              {change >= 0 ? "↑" : "↓"} {Math.abs(Math.round(change))}%
+            </span>
+          ) : null}
+        </div>
+        <EnergyBars days={recent} goal={goal} summary={`Calories for the last ${days} days, averaging ${formatNumber(average)} against a goal of ${formatNumber(goal)}.`} />
+        <p className="text-xs text-muted-foreground">
+          {onTarget} of {recent.length} days on target. The dashed line is your {formatNumber(goal)} kcal goal
+          {change !== null ? `, and the change compares with the ${days} days before.` : "."}
+        </p>
+      </Section>
 
       {bmiValue !== null && category ? (
-        <Card
-          title="BMI"
-          icon={Scale}
-          aside={
-            <span className="rounded-full bg-background px-2.5 py-1 text-xs font-semibold">
-              {BMI_LABELS[category]}
-            </span>
-          }
-        >
+        <Section title="BMI" aside={<span className="rounded-full bg-background px-2.5 py-1 text-xs font-semibold">{BMI_LABELS[category]}</span>}>
           <div className="flex items-baseline gap-2">
-            <span className="text-4xl font-semibold tracking-tight tabular-nums">{bmiValue.toFixed(1)}</span>
+            <span className="text-4xl font-bold tracking-tight tabular-nums">{bmiValue.toFixed(1)}</span>
             <span className="text-sm text-muted-foreground">kg/m²</span>
           </div>
           <div className="flex flex-col gap-1.5" aria-hidden>
@@ -299,17 +324,10 @@ export function ProgressScreen() {
                 <span
                   key={s.category}
                   className="h-full first:rounded-l-full last:rounded-r-full"
-                  style={{
-                    width: `${((s.to - s.from) / (BMI_MAX - BMI_MIN)) * 100}%`,
-                    background: s.color,
-                    opacity: s.category === category ? 1 : 0.35,
-                  }}
+                  style={{ width: `${((s.to - s.from) / (BMI_MAX - BMI_MIN)) * 100}%`, background: s.color, opacity: s.category === category ? 1 : 0.35 }}
                 />
               ))}
-              <span
-                className="absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-background bg-foreground"
-                style={{ left: `${bmiPos}%` }}
-              />
+              <span className="absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-background bg-foreground" style={{ left: `${bmiPos}%` }} />
             </div>
             <div className="flex text-[0.65rem] text-muted-foreground">
               {BMI_SEGMENTS.map((s) => (
@@ -320,31 +338,33 @@ export function ProgressScreen() {
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            BMI is a rough guide. It can mislead for very muscular people, and it doesn&apos;t replace advice from a
-            health professional.
+            BMI is a rough guide. It can mislead for very muscular people, and it doesn&apos;t replace advice from a health professional.
           </p>
-        </Card>
+        </Section>
       ) : null}
 
-      <Card title="Last 7 days" icon={Flame}>
-        <div className="flex items-baseline justify-between gap-3">
-          <div className="leading-tight">
-            <span className="text-4xl font-semibold tracking-tight tabular-nums">{formatNumber(average)}</span>
-            <span className="ml-1 text-muted-foreground">kcal / day</span>
+      <section className="grid grid-cols-3 gap-2" aria-label="Highlights">
+        {[
+          { icon: Trophy, value: `${best}`, label: "Longest streak", color: "var(--carbs)" },
+          { icon: UtensilsCrossed, value: `${last30.length}`, label: "Meals, 30 days", color: "var(--fat)" },
+          { icon: Heart, value: avgHealth === null ? "-" : formatScore(avgHealth), label: "Avg health score", color: "var(--protein)" },
+        ].map(({ icon: Icon, value, label, color }) => (
+          <div key={label} className={cn("flex flex-col gap-1 p-3.5", CARD)}>
+            <Icon className="size-4" style={{ color }} aria-hidden />
+            <span className="text-xl font-bold tabular-nums">{value}</span>
+            <span className="text-[0.7rem] leading-tight text-muted-foreground">{label}</span>
           </div>
-          <span className="text-xs text-muted-foreground">
-            {onTarget} of {week.length} on target
-          </span>
-        </div>
-        <EnergyBars
-          days={week}
-          goal={goal}
-          summary={`Calories for the last 7 days, averaging ${formatNumber(average)} against a goal of ${formatNumber(goal)}.`}
-        />
-        <p className="text-xs text-muted-foreground">
-          The dashed line is your {formatNumber(goal)} kcal goal. Green bars are within 100 kcal of it.
+        ))}
+      </section>
+
+      {start ? (
+        <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+          <Scale className="size-3.5" aria-hidden />
+          Started at {formatWeight(start.weightKg, units)} on {formatLongDate(start.logDate)}
         </p>
-      </Card>
+      ) : null}
+
+      <WeightSheet open={weighIn} onOpenChange={setWeighIn} />
     </div>
   );
 }

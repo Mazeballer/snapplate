@@ -1,5 +1,6 @@
 import { HealthChip } from "@/components/snapplate/health-chip";
 import { formatNumber } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { formatClockTime } from "@/lib/time";
 import type { Meal } from "@/lib/types";
 
@@ -11,6 +12,17 @@ const TYPE_LABEL = {
 } as const;
 
 export function MealThumb({ meal, className }: { meal: Meal; className?: string }) {
+  if (meal.imageUrl) {
+    return (
+      // Signed, short-lived photo links (or local preview links) are not suitable for next/image.
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={meal.imageUrl}
+        alt=""
+        className={cn("size-14 shrink-0 rounded-2xl object-cover", className?.includes("size-16") && "size-16")}
+      />
+    );
+  }
   return (
     <span
       aria-hidden

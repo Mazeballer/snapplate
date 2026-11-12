@@ -1,7 +1,8 @@
 "use client";
 
-import { CircleAlert, CircleCheck, Pencil, Trash2, TriangleAlert, type LucideIcon } from "lucide-react";
+import { Bookmark, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { HealthPanel } from "@/components/snapplate/health-panel";
 import { MealThumb } from "@/components/snapplate/meal-row";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,18 +12,11 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { useDeleteMeal } from "@/hooks/use-data";
+import { useDeleteMeal, useSaveFavourite } from "@/hooks/use-data";
+import { savedFromMeal } from "@/lib/meal";
 import { formatNumber } from "@/lib/format";
-import { formatScore, HEALTH_TONE_CLASSES, healthBand } from "@/lib/healthScore";
 import { formatClockTime, formatDate } from "@/lib/time";
-import type { FactorQuality, Meal } from "@/lib/types";
-import { cn } from "@/lib/utils";
-
-const FACTOR_ICON: Record<FactorQuality, { icon: LucideIcon; className: string }> = {
-  good: { icon: CircleCheck, className: "text-success" },
-  fair: { icon: CircleAlert, className: "text-warning" },
-  bad: { icon: TriangleAlert, className: "text-danger" },
-};
+import type { Meal } from "@/lib/types";
 
 function Macro({ label, value, colorVar }: { label: string; value: number; colorVar: string }) {
   return (
@@ -55,6 +49,7 @@ export function MealDetailDrawer({
   onOpenChange: (open: boolean) => void;
 }) {
   const deleteMeal = useDeleteMeal();
+  const saveFavourite = useSaveFavourite();
 
   function handleDelete() {
     if (!meal) return;
@@ -66,8 +61,6 @@ export function MealDetailDrawer({
       onError: () => toast.error("Couldn't delete that meal. Please try again."),
     });
   }
-
-  const band = meal && meal.healthScore !== null ? healthBand(meal.healthScore) : null;
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} showSwipeHandle>
@@ -106,38 +99,7 @@ export function MealDetailDrawer({
                 </div>
               ) : null}
 
-              {meal.healthScore !== null && band ? (
-                <section className="flex flex-col gap-3 rounded-2xl bg-card border border-border p-4" aria-label="Health score">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold">Health score</h3>
-                    <span className={cn("rounded-full px-2.5 py-1 text-sm font-semibold", HEALTH_TONE_CLASSES[band.tone])}>
-                      {formatScore(meal.healthScore)}/10 · {band.label}
-                    </span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-background" aria-hidden>
-                    <div
-                      className="h-full rounded-full bg-brand transition-[width] duration-700"
-                      style={{ width: `${(meal.healthScore / 10) * 100}%` }}
-                    />
-                  </div>
-                  {meal.factors.length > 0 ? (
-                    <ul className="flex flex-col gap-2.5">
-                      {meal.factors.map((factor) => {
-                        const { icon: Icon, className } = FACTOR_ICON[factor.quality];
-                        return (
-                          <li key={factor.label} className="flex items-start gap-2.5">
-                            <Icon className={cn("mt-0.5 size-4 shrink-0", className)} aria-hidden />
-                            <span className="text-sm leading-snug">
-                              <span className="font-medium">{factor.label}.</span>{" "}
-                              <span className="text-muted-foreground">{factor.note}</span>
-                            </span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  ) : null}
-                </section>
-              ) : null}
+              {meal.healthScore !== null ? <HealthPanel score={meal.healthScore} factors={meal.factors} /> : null}
 
               {meal.items.length > 0 ? (
                 <section className="flex flex-col gap-2" aria-label="Ingredients">
@@ -159,6 +121,23 @@ export function MealDetailDrawer({
                   </ul>
                 </section>
               ) : null}
+
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="h-12 gap-2 rounded-full"
+                disabled={saveFavourite.isPending}
+                onClick={() =>
+                  saveFavourite.mutate(savedFromMeal(meal), {
+                    onSuccess: () => toast.success("Saved to your meals"),
+                    onError: () => toast.error("Couldn't save it. Please try again."),
+                  })
+                }
+              >
+                <Bookmark aria-hidden />
+                Save to my meals
+              </Button>
 
               <div className="flex gap-3 pt-1">
                 <Button

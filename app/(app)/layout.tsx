@@ -1,5 +1,6 @@
 import { Suspense, type ReactNode } from "react";
 import { AuthGate } from "@/components/snapplate/auth-gate";
+import { SelectedDateProvider } from "@/components/snapplate/selected-date";
 import { TabBar } from "@/components/snapplate/tab-bar";
 
 function PageSkeleton() {
@@ -14,8 +15,9 @@ function PageSkeleton() {
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
+    <SelectedDateProvider>
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
-      <main className="flex flex-1 flex-col px-5 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(6rem+env(safe-area-inset-bottom))]">
+      <main className="flex flex-1 flex-col px-5 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
         {/* The session is read at request time, so the app streams in behind this boundary. */}
         <Suspense fallback={<PageSkeleton />}>
           <AuthGate>{children}</AuthGate>
@@ -23,5 +25,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </main>
       <TabBar />
     </div>
+    </SelectedDateProvider>
   );
 }

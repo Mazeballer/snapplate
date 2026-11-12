@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampScore, formatScore, healthBand } from "./healthScore";
+import { clampScore, formatScore, healthBand, scoreMeal } from "./healthScore";
 import { ringProgress, ringState } from "./rings";
 import { currentStreak, longestStreak } from "./streak";
 import { averageHealthScore, groupByDate, rolloverAmount, sumMeals } from "./totals";
@@ -153,5 +153,46 @@ describe("rolloverAmount", () => {
 
   it("carries nothing over from a day with no meals logged", () => {
     expect(rolloverAmount(2000, 0, false)).toBe(0);
+  });
+});
+
+describe("scoreMeal", () => {
+  const salad = { calories: 520, proteinG: 51, carbsG: 32, fatG: 20, fiberG: 6, sugarG: 5, sodiumMg: 420, processing: "whole" as const };
+  const tehTarik = { calories: 130, proteinG: 3, carbsG: 20, fatG: 4, fiberG: 0, sugarG: 19, sodiumMg: 60, processing: "mixed" as const };
+  const nasiLemak = { calories: 618, proteinG: 20, carbsG: 66, fatG: 31, fiberG: 4, sugarG: 6, sodiumMg: 980, processing: "mixed" as const };
+
+  it("scores a lean whole-food meal high", () => {
+    expect(scoreMeal(salad).score).toBeGreaterThanOrEqual(9);
+  });
+
+  it("scores a sugary drink low", () => {
+    const result = scoreMeal(tehTarik);
+    expect(result.score).toBeLessThan(5);
+    expect(result.factors.find((f) => f.label === "Sugar")?.quality).toBe("bad");
+  });
+
+  it("ranks the healthy meal above the heavy one above the sugary drink", () => {
+    expect(scoreMeal(salad).score).toBeGreaterThan(scoreMeal(nasiLemak).score);
+    expect(scoreMeal(nasiLemak).score).toBeGreaterThan(scoreMeal(tehTarik).score);
+  });
+
+  it("penalises heavily processed food", () => {
+    expect(scoreMeal({ ...salad, processing: "ultra" }).score).toBeLessThan(scoreMeal(salad).score - 2);
+  });
+
+  it("stays between 0 and 10 and explains itself", () => {
+    const worst = scoreMeal({ calories: 100, proteinG: 0, carbsG: 25, fatG: 6, fiberG: 0, sugarG: 30, sodiumMg: 900, processing: "ultra" });
+    expect(worst.score).toBeGreaterThanOrEqual(0);
+    expect(worst.score).toBeLessThanOrEqual(10);
+    expect(worst.factors.length).toBeGreaterThan(2);
+    expect(scoreMeal(salad).score).toBeLessThanOrEqual(10);
+  });
+
+  it("skips factors for nutrients that are unknown", () => {
+    const result = scoreMeal({ ...salad, fiberG: null, sugarG: null, sodiumMg: null });
+    const labels = result.factors.map((f) => f.label);
+    expect(labels).not.toContain("Sugar");
+    expect(labels).not.toContain("Sodium");
+    expect(labels).not.toContain("Fibre");
   });
 });
