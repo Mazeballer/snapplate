@@ -1,10 +1,9 @@
-import { MOCK_MODE } from "@/lib/mock";
 import type { ExerciseInput, MealDraft, NewMealItem } from "@/lib/types";
-import type { AnalysisItem, AnalyzeErrorCode, AnalyzeRequest } from "./schema";
+import type { AnalyzeErrorCode } from "./errors";
+import type { AnalysisItem, AnalyzeRequest } from "./schema";
 
 /**
- * Asks the server to estimate a meal or workout. In preview mode it returns sample answers
- * instead, so the screens can be tried without an account or the AI.
+ * Asks the server to estimate a meal or workout.
  */
 export type Outcome<T> = { ok: true; value: T } | { ok: false; error: AnalyzeErrorCode };
 
@@ -35,26 +34,19 @@ function asError(error: string | undefined): AnalyzeErrorCode {
   return error && KNOWN_ERRORS.has(error) ? (error as AnalyzeErrorCode) : "unavailable";
 }
 
-async function mealOutcome(body: AnalyzeRequest, preview: () => Promise<MealDraft>): Promise<Outcome<MealDraft>> {
-  if (MOCK_MODE) {
-    await new Promise((resolve) => setTimeout(resolve, 1400));
-    return { ok: true, value: await preview() };
-  }
+async function mealOutcome(body: AnalyzeRequest): Promise<Outcome<MealDraft>> {
   const result = await post(body);
   if (result.ok && result.draft) return { ok: true, value: result.draft };
   return { ok: false, error: asError(result.error) };
 }
 
 export function analyzeText(text: string): Promise<Outcome<MealDraft>> {
-  return mealOutcome({ mode: "text", text }, async () => (await import("@/lib/data/mock")).mockAnalyzeMeal(text, "text"));
+  return mealOutcome({ mode: "text", text });
 }
 
 /** `base64` is the resized JPEG; `hint` is an optional note from the person. */
 export function analyzePhoto(base64: string, hint?: string): Promise<Outcome<MealDraft>> {
-  return mealOutcome(
-    { mode: "photo", image: base64, hint: hint?.trim() || undefined },
-    async () => (await import("@/lib/data/mock")).mockAnalyzeMeal(hint ?? null, "photo"),
-  );
+  return mealOutcome({ mode: "photo", image: base64, hint: hint?.trim() || undefined });
 }
 
 /** What the model needs to fix an earlier estimate: the items it produced, in its own format. */
@@ -74,24 +66,15 @@ export function itemsForAnalysis(items: NewMealItem[]): AnalysisItem[] {
 }
 
 export function fixMeal(draft: MealDraft, correction: string, base64?: string): Promise<Outcome<MealDraft>> {
-  return mealOutcome(
-    {
-      mode: "fix",
-      correction,
-      previous: { name: draft.name, items: itemsForAnalysis(draft.items) },
-      image: base64,
-    },
-    async () => (await import("@/lib/data/mock")).mockAnalyzeMeal(correction, draft.source === "photo" ? "photo" : "text"),
-  );
+  return mealOutcome({
+    mode: "fix",
+    correction,
+    previous: { name: draft.name, items: itemsForAnalysis(draft.items) },
+    image: base64,
+  });
 }
 
 export async function analyzeWorkout(text: string, weightKg?: number): Promise<Outcome<ExerciseInput>> {
-  if (MOCK_MODE) {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    const { mockAnalyzeExercise } = await import("@/lib/data/mock");
-    const result = mockAnalyzeExercise(text, weightKg ?? 70);
-    return result ? { ok: true, value: result } : { ok: false, error: "not_exercise" };
-  }
   const result = await post({ mode: "exercise", text, weightKg });
   if (result.ok && result.exercise) return { ok: true, value: result.exercise };
   return { ok: false, error: asError(result.error) };

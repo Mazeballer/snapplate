@@ -16,8 +16,8 @@ import {
   analyzeRequestSchema,
   exerciseAnalysisSchema,
   mealAnalysisSchema,
-  type AnalyzeErrorCode,
 } from "@/lib/ai/schema";
+import type { AnalyzeErrorCode } from "@/lib/ai/errors";
 import { defaultMealType } from "@/lib/meal";
 import { minutesSinceMidnight } from "@/lib/time";
 import { createClient } from "@/lib/supabase/server";

@@ -8,7 +8,7 @@ import { useLogDate, useSaveExercise } from "@/components/log/use-log";
 import { Button } from "@/components/ui/button";
 import { useProfile } from "@/hooks/use-data";
 import { analyzeWorkout } from "@/lib/ai/client";
-import { ERROR_MESSAGES, type AnalyzeErrorCode } from "@/lib/ai/schema";
+import { ERROR_MESSAGES, type AnalyzeErrorCode } from "@/lib/ai/errors";
 import { DURATION_PRESETS, estimateWorkoutCalories, WORKOUT_NAME, type WorkoutKind } from "@/lib/exercise";
 import { formatNumber } from "@/lib/format";
 import type { ExerciseInput, ExerciseIntensity } from "@/lib/types";

@@ -61,6 +61,12 @@ describe("finalizeMeal", () => {
     expect(out.items[0]).toMatchObject({ quantity: 2, calories: 600 });
   });
 
+  it("never lets an ingredient amount reach zero, which the database rejects", () => {
+    const tiny = { ...draft, servings: 0.5, items: [{ ...draft.items[0]!, quantity: 0.004 }] };
+    expect(finalizeMeal(tiny, "x").items[0]!.quantity).toBe(0.01);
+    expect(finalizeMeal({ ...draft, servings: 1.25 }, "x").items[0]!.quantity).toBe(1.25);
+  });
+
   it("keeps unknown nutrients unknown", () => {
     const out = finalizeMeal({ ...draft, fiberG: null, sugarG: null, sodiumMg: null, servings: 1.5 }, "x");
     expect(out.fiberG).toBeNull();

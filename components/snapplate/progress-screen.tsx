@@ -4,7 +4,6 @@ import { ArrowRight, Check, CloudOff, Flag, Flame, Heart, Scale, Trophy, Utensil
 import { useMemo, useState } from "react";
 import { EmptyState } from "@/components/snapplate/empty-state";
 import { EnergyBars, WeightChart } from "@/components/snapplate/charts";
-import { MockBanner } from "@/components/snapplate/mock-banner";
 import { Segmented } from "@/components/snapplate/segmented";
 import { WeightSheet } from "@/components/snapplate/weight-sheet";
 import { Button } from "@/components/ui/button";
@@ -241,7 +240,6 @@ export function ProgressScreen() {
 
   return (
     <div className="flex flex-col gap-4">
-      <MockBanner />
       <h1 className="text-[32px] leading-[37px] font-bold tracking-tight">Progress</h1>
 
       <div className="grid grid-cols-2 gap-3">

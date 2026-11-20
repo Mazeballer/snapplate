@@ -1,7 +1,6 @@
 "use client";
 
 import { Flame, type LucideIcon } from "lucide-react";
-import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +29,7 @@ export function Ring({
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90" aria-hidden>
         <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={track} strokeWidth={stroke} />
-        <motion.circle
+        <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
@@ -38,9 +37,11 @@ export function Ring({
           stroke={color}
           strokeWidth={stroke}
           strokeLinecap="round"
-          initial={false}
-          animate={{ pathLength: clamped }}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          pathLength={1}
+          strokeDasharray="1 1"
+          strokeDashoffset={1 - clamped}
+          className="transition-[stroke-dashoffset] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+          style={{ opacity: clamped > 0 ? 1 : 0 }}
         />
       </svg>
       {children ? <div className="absolute inset-0 flex items-center justify-center">{children}</div> : null}

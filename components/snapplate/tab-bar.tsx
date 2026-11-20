@@ -3,9 +3,10 @@
 import { ChartNoAxesColumn, House, Plus, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LogSheet } from "@/components/snapplate/log-sheet";
-import { useProfile } from "@/hooks/use-data";
+import { useQueryClient } from "@tanstack/react-query";
+import { profileQuery, useProfile, weightsQuery } from "@/hooks/use-data";
 import { cn } from "@/lib/utils";
 
 function isActive(pathname: string, href: string) {
@@ -31,6 +32,13 @@ export function TabBar() {
   const pathname = usePathname();
   const [logOpen, setLogOpen] = useState(false);
 
+  // Load what Progress needs while you're on Home, so opening it is instant.
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    void queryClient.prefetchQuery(profileQuery);
+    void queryClient.prefetchQuery(weightsQuery);
+  }, [queryClient]);
+
   const tabs = [
     { href: "/", label: "Home", icon: (active: boolean) => <House className="size-6" strokeWidth={active ? 2.4 : 1.8} aria-hidden /> },
     { href: "/progress", label: "Progress", icon: (active: boolean) => <ChartNoAxesColumn className="size-6" strokeWidth={active ? 2.4 : 1.8} aria-hidden /> },
@@ -41,7 +49,7 @@ export function TabBar() {
     <>
       <nav aria-label="Main" className="pointer-events-none fixed inset-x-0 bottom-0 z-40">
         <div className="pointer-events-auto mx-auto flex max-w-md items-center gap-3 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-          <ul className="flex flex-1 rounded-full border border-border bg-card/95 p-1.5 shadow-[0_4px_20px_rgba(30,26,36,0.12)] backdrop-blur-xl">
+          <ul className="flex flex-1 rounded-full border border-border bg-card p-1.5 shadow-[0_4px_20px_rgba(30,26,36,0.12)]">
             {tabs.map(({ href, label, icon }) => {
               const active = isActive(pathname, href);
               return (

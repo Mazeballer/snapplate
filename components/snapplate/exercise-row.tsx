@@ -12,10 +12,12 @@ const INTENSITY = { low: "Low", medium: "Medium", high: "High" } as const;
 /** One logged workout, with a delete button. */
 export function ExerciseRow({ exercise }: { exercise: Exercise }) {
   const remove = useDeleteExercise();
+  const fromHealth = exercise.source === "shortcut";
   const detail = [
     exercise.durationMin ? `${exercise.durationMin} min` : null,
     exercise.intensity ? INTENSITY[exercise.intensity] : null,
     formatClockTime(exercise.loggedAt),
+    fromHealth ? "Apple Health" : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -34,20 +36,22 @@ export function ExerciseRow({ exercise }: { exercise: Exercise }) {
         {formatNumber(exercise.calories)}
         <span className="text-xs font-normal text-muted-foreground">kcal</span>
       </span>
-      <button
-        type="button"
-        aria-label={`Delete ${exercise.name}`}
-        disabled={remove.isPending}
-        onClick={() =>
-          remove.mutate(exercise.id, {
-            onSuccess: () => toast("Workout deleted"),
-            onError: () => toast.error("Couldn't delete that. Please try again."),
-          })
-        }
-        className="flex size-10 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted"
-      >
-        <Trash2 className="size-[18px]" aria-hidden />
-      </button>
+      {fromHealth ? null : (
+        <button
+          type="button"
+          aria-label={`Delete ${exercise.name}`}
+          disabled={remove.isPending}
+          onClick={() =>
+            remove.mutate(exercise.id, {
+              onSuccess: () => toast("Workout deleted"),
+              onError: () => toast.error("Couldn't delete that. Please try again."),
+            })
+          }
+          className="flex size-10 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted"
+        >
+          <Trash2 className="size-[18px]" aria-hidden />
+        </button>
+      )}
     </div>
   );
 }

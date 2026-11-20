@@ -14,13 +14,13 @@ import {
 import { cn } from "@/lib/utils";
 
 /** The page frame for a Settings sub-screen: a back button and a title. */
-export function SettingsPage({ title, children }: { title: string; children: ReactNode }) {
+export function SettingsPage({ title, children, backHref = "/settings" }: { title: string; children: ReactNode; backHref?: string }) {
   return (
     <div className="flex flex-col gap-5">
       <header className="flex items-center gap-3">
         <Link
-          href="/settings"
-          aria-label="Back to settings"
+          href={backHref}
+          aria-label="Back"
           className="flex size-[45px] shrink-0 items-center justify-center rounded-full bg-foreground/[0.06] active:bg-foreground/10"
         >
           <ChevronLeft className="size-6" aria-hidden />

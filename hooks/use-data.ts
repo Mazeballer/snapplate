@@ -5,8 +5,14 @@ import { dataSource, type SaveProfileInput } from "@/lib/data";
 import type { LogDate } from "@/lib/time";
 import type { ExerciseInput, MealInput, SavedMealInput } from "@/lib/types";
 
+/** Things that only change when this app changes them: kept longer, and refreshed by the mutations. */
+const RARELY_CHANGES_MS = 5 * 60_000;
+
+export const profileQuery = { queryKey: ["profile"], queryFn: () => dataSource.getProfile(), staleTime: RARELY_CHANGES_MS } as const;
+export const weightsQuery = { queryKey: ["weights"], queryFn: () => dataSource.getWeightLogs(), staleTime: RARELY_CHANGES_MS } as const;
+
 export function useProfile() {
-  return useQuery({ queryKey: ["profile"], queryFn: () => dataSource.getProfile() });
+  return useQuery(profileQuery);
 }
 
 /** Meals between two log dates. Pass null until the dates are known (they depend on "today"). */
@@ -19,7 +25,7 @@ export function useMeals(from: LogDate | null, to: LogDate | null) {
 }
 
 export function useWeightLogs() {
-  return useQuery({ queryKey: ["weights"], queryFn: () => dataSource.getWeightLogs() });
+  return useQuery(weightsQuery);
 }
 
 export function useWater(from: LogDate | null, to: LogDate | null) {
@@ -52,7 +58,7 @@ export function useSaveProfile() {
 }
 
 export function useSavedMeals() {
-  return useQuery({ queryKey: ["saved-meals"], queryFn: () => dataSource.getSavedMeals() });
+  return useQuery({ queryKey: ["saved-meals"], queryFn: () => dataSource.getSavedMeals(), staleTime: RARELY_CHANGES_MS });
 }
 
 export function useExercise(from: LogDate | null, to: LogDate | null) {
@@ -67,6 +73,14 @@ export function useAddMeal() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: MealInput) => dataSource.addMeal(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["meals"] }),
+  });
+}
+
+export function useUpdateMeal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: MealInput }) => dataSource.updateMeal(id, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["meals"] }),
   });
 }
@@ -116,5 +130,25 @@ export function useDeleteMeal() {
   return useMutation({
     mutationFn: (id: string) => dataSource.deleteMeal(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["meals"] }),
+  });
+}
+
+export function useHealthSync() {
+  return useQuery({ queryKey: ["health-sync"], queryFn: () => dataSource.getHealthSync() });
+}
+
+export function useCreateHealthToken() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => dataSource.createHealthToken(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["health-sync"] }),
+  });
+}
+
+export function useRevokeHealthToken() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => dataSource.revokeHealthToken(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["health-sync"] }),
   });
 }

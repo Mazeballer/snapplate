@@ -85,6 +85,13 @@ export interface WeightLog {
   weightKg: number;
 }
 
+/** Whether the Apple Health Shortcut is set up, and when it last sent data. */
+export interface HealthSyncStatus {
+  connected: boolean;
+  connectedAt: string | null;
+  lastSyncAt: string | null;
+}
+
 export interface DailyActivity {
   logDate: LogDate;
   steps: number;

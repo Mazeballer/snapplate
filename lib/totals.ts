@@ -1,4 +1,4 @@
-import type { Meal } from "./types";
+import type { Exercise, Meal } from "./types";
 
 export interface Totals {
   calories: number;
@@ -52,4 +52,25 @@ export const ROLLOVER_CAP_KCAL = 200;
 export function rolloverAmount(previousGoal: number, previousEaten: number, hadLogs: boolean): number {
   if (!hadLogs) return 0;
   return Math.min(ROLLOVER_CAP_KCAL, Math.max(0, Math.round(previousGoal - previousEaten)));
+}
+
+/**
+ * Calories burned in a day, without counting anything twice.
+ *
+ * Apple Health's Active Energy already includes the workouts it recorded, so workouts that came
+ * from Health (source "shortcut") are not added on top of it. If Health's day total is missing or
+ * lower than its own workouts (a half-finished sync), the workouts' total is used instead.
+ * Workouts logged by hand or by AI are not in Health, so they are added on top.
+ */
+export function burnedCalories(
+  activeKcal: number,
+  exercises: readonly Pick<Exercise, "calories" | "source">[],
+): number {
+  let fromHealth = 0;
+  let byHand = 0;
+  for (const e of exercises) {
+    if (e.source === "shortcut") fromHealth += e.calories;
+    else byHand += e.calories;
+  }
+  return Math.max(activeKcal, fromHealth) + byHand;
 }

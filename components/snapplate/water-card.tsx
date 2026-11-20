@@ -45,7 +45,7 @@ export function WaterCard({ ml, canAdd }: { ml: number; canAdd: boolean }) {
             disabled={addWater.isPending}
             className="flex h-10 flex-1 items-center justify-center rounded-xl bg-background text-sm font-semibold transition-colors active:bg-border disabled:opacity-60"
           >
-            +1 Glass
+            +{GLASS_ML} ml
           </button>
           <button
             type="button"
@@ -53,7 +53,7 @@ export function WaterCard({ ml, canAdd }: { ml: number; canAdd: boolean }) {
             disabled={addWater.isPending}
             className="flex h-10 flex-1 items-center justify-center rounded-xl bg-background text-sm font-semibold transition-colors active:bg-border disabled:opacity-60"
           >
-            +1 Bottle
+            +{GLASS_ML * 2} ml
           </button>
         </div>
       ) : null}

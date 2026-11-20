@@ -4,7 +4,6 @@ import {
   DEFAULT_DRAFT,
   draftToPlanInput,
   draftToProfile,
-  previewDraft,
   stepsFor,
   withGoal,
   type Draft,
@@ -109,10 +108,6 @@ describe("draftToPlanInput / draftToProfile", () => {
     expect(profile?.dietaryPreference).toBe("vegetarian");
     expect(profile?.calorieTarget).toBeGreaterThan(1200);
     expect(profile?.proteinG).toBeGreaterThan(0);
-  });
-
-  it("the preview draft is complete", () => {
-    expect(draftToProfile(previewDraft(), TODAY)).not.toBeNull();
   });
 });
 

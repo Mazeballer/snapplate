@@ -20,7 +20,7 @@ const MEAL_TYPES: { value: MealType; label: string }[] = [
   { value: "snack", label: "Snack" },
 ];
 
-function FixSheet({
+export function FixSheet({
   open,
   onOpenChange,
   onSubmit,

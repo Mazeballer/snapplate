@@ -21,12 +21,14 @@ export function loggedAtFor(logDate: LogDate, now: Date = new Date()): string {
 }
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
+/** Ingredient amounts keep two decimals and never reach zero, which the database rejects. */
+const scaleQuantity = (n: number) => Math.max(0.01, Math.round(n * 100) / 100);
 const scaleOpt = (n: number | null, f: number) => (n === null ? null : round1(n * f));
 
 function scaleItem(item: NewMealItem, f: number): NewMealItem {
   return {
     ...item,
-    quantity: round1(item.quantity * f),
+    quantity: scaleQuantity(item.quantity * f),
     calories: Math.round(item.calories * f),
     proteinG: round1(item.proteinG * f),
     carbsG: round1(item.carbsG * f),
@@ -164,12 +166,27 @@ export function savedFromMeal(meal: Meal): SavedMealInput {
     factors: meal.factors,
     items: meal.items.map((item) => ({
       name: item.name,
-      quantity: round1(item.quantity / f),
+      quantity: scaleQuantity(item.quantity / f),
       unit: item.unit,
       calories: Math.round(item.calories / f),
       proteinG: per(item.proteinG),
       carbsG: per(item.carbsG),
       fatG: per(item.fatG),
     })),
+  };
+}
+
+/**
+ * A logged meal turned back into a draft (nutrition per serving), so it can be re-estimated with
+ * "Fix Results". The other direction is finalizeMeal.
+ */
+export function draftFromMeal(meal: Meal): MealDraft {
+  const saved = savedFromMeal(meal);
+  return {
+    ...draftFromSaved(saved, meal.mealType ?? "snack"),
+    mealType: meal.mealType,
+    source: meal.source,
+    servings: meal.servings > 0 ? meal.servings : 1,
+    imagePreview: meal.imageUrl,
   };
 }

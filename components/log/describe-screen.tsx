@@ -9,7 +9,7 @@ import { ReviewMeal } from "@/components/log/review-meal";
 import { useLogDate, useSaveMeal } from "@/components/log/use-log";
 import { Button } from "@/components/ui/button";
 import { analyzeText, fixMeal } from "@/lib/ai/client";
-import { ERROR_MESSAGES, type AnalyzeErrorCode } from "@/lib/ai/schema";
+import { ERROR_MESSAGES, type AnalyzeErrorCode } from "@/lib/ai/errors";
 import type { MealDraft } from "@/lib/types";
 
 const EXAMPLES = ["2 roti canai with dhal and a teh tarik", "Chicken rice, one plate", "Grilled chicken salad with brown rice"];

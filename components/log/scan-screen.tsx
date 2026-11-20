@@ -9,7 +9,7 @@ import { ReviewMeal } from "@/components/log/review-meal";
 import { useLogDate, useSaveMeal } from "@/components/log/use-log";
 import { Button } from "@/components/ui/button";
 import { analyzePhoto, fixMeal } from "@/lib/ai/client";
-import { ERROR_MESSAGES, type AnalyzeErrorCode } from "@/lib/ai/schema";
+import { ERROR_MESSAGES, type AnalyzeErrorCode } from "@/lib/ai/errors";
 import { blobToBase64, resizePhoto } from "@/lib/image";
 import type { MealDraft } from "@/lib/types";
 import { useRouter } from "next/navigation";

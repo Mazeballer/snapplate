@@ -97,6 +97,9 @@ interface ProfileRow {
   onboarded_at: string | null;
 }
 
+const SIGNED_URL_SECONDS = 3600;
+const signedUrlCache = new Map<string, { url: string; expires: number }>();
+
 function fail(action: string, error: { message: string } | null): never {
   throw new Error(`${action}: ${error?.message ?? "unknown error"}`);
 }
@@ -186,13 +189,24 @@ export const supabaseDataSource: DataSource = {
     if (error) fail("Could not load your meals", error);
     const rows = (data ?? []) as MealRow[];
 
-    // Photos live in a private bucket, so each gets a short-lived link.
+    // Photos live in a private bucket, so each gets a short-lived link. Links are reused until
+    // shortly before they expire: it saves a request per refresh and lets the browser keep the
+    // photos in its cache instead of downloading them again under a new URL every time.
     const imageUrls = new Map<string, string>();
-    const paths = rows.map((r) => r.image_path).filter((p): p is string => p !== null);
-    if (paths.length > 0) {
-      const { data: signed } = await createClient().storage.from("meal-photos").createSignedUrls(paths, 3600);
+    const now = Date.now();
+    const missing: string[] = [];
+    for (const path of new Set(rows.map((r) => r.image_path).filter((p): p is string => p !== null))) {
+      const cached = signedUrlCache.get(path);
+      if (cached && cached.expires > now) imageUrls.set(path, cached.url);
+      else missing.push(path);
+    }
+    if (missing.length > 0) {
+      const { data: signed } = await createClient().storage.from("meal-photos").createSignedUrls(missing, SIGNED_URL_SECONDS);
       for (const entry of signed ?? []) {
-        if (entry.path && entry.signedUrl) imageUrls.set(entry.path, entry.signedUrl);
+        if (entry.path && entry.signedUrl) {
+          imageUrls.set(entry.path, entry.signedUrl);
+          signedUrlCache.set(entry.path, { url: entry.signedUrl, expires: now + (SIGNED_URL_SECONDS - 600) * 1000 });
+        }
       }
     }
     return rows.map((r) => toMeal(r, imageUrls));
@@ -242,10 +256,17 @@ export const supabaseDataSource: DataSource = {
 
   async saveProfile({ profile: p, weightLog, markOnboarded }) {
     const supabase = createClient();
+    let displayName = p.displayName;
+    if (!displayName && markOnboarded) {
+      // Setup has no name question, so start from the email's first name; it can be changed in Settings.
+      const { data } = await supabase.auth.getSession();
+      const word = data.session?.user.email?.split("@")[0]?.split(/[._+\-\d]+/)[0] ?? "";
+      displayName = word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : null;
+    }
     // user_id is filled in by the database from the signed-in session.
     const { error } = await supabase.from("profiles").upsert(
       {
-        display_name: p.displayName,
+        display_name: displayName,
         sex: p.sex,
         date_of_birth: p.dateOfBirth,
         height_cm: p.heightCm,
@@ -416,8 +437,82 @@ export const supabaseDataSource: DataSource = {
     if (error) fail("Could not log water", error);
   },
 
+  async updateMeal(id, m) {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("meals")
+      .update({
+        meal_type: m.mealType,
+        name: m.name,
+        emoji: m.emoji,
+        calories: m.calories,
+        protein_g: m.proteinG,
+        carbs_g: m.carbsG,
+        fat_g: m.fatG,
+        fiber_g: m.fiberG,
+        sugar_g: m.sugarG,
+        sodium_mg: m.sodiumMg,
+        servings: m.servings,
+        health_score: m.healthScore,
+        health_factors: m.factors,
+        ai_trace_id: m.aiTraceId,
+      })
+      .eq("id", id);
+    if (error) fail("Could not update the meal", error);
+
+    // Swap the ingredients. Keep the old ones so they can be put back if the new ones fail.
+    const { data: old } = await supabase.from("meal_items").select("*").eq("meal_id", id);
+    await supabase.from("meal_items").delete().eq("meal_id", id);
+    if (m.items.length > 0) {
+      const { error: itemsError } = await supabase.from("meal_items").insert(
+        m.items.map((item, position) => ({
+          meal_id: id,
+          position,
+          name: item.name,
+          quantity: item.quantity,
+          unit: item.unit,
+          calories: item.calories,
+          protein_g: item.proteinG,
+          carbs_g: item.carbsG,
+          fat_g: item.fatG,
+        })),
+      );
+      if (itemsError) {
+        if (old && old.length > 0) await supabase.from("meal_items").insert(old);
+        fail("Could not update the meal's ingredients", itemsError);
+      }
+    }
+  },
+
   async deleteMeal(id: string) {
     const { error } = await createClient().from("meals").delete().eq("id", id);
     if (error) fail("Could not delete the meal", error);
+  },
+
+  async getHealthSync() {
+    const { data, error } = await createClient()
+      .from("health_sync_tokens")
+      .select("created_at, last_used_at")
+      .is("revoked_at", null)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (error) fail("Could not load your Apple Health status", error);
+    const row = data?.[0];
+    return {
+      connected: Boolean(row),
+      connectedAt: (row?.created_at as string | undefined) ?? null,
+      lastSyncAt: (row?.last_used_at as string | undefined) ?? null,
+    };
+  },
+
+  async createHealthToken() {
+    const { data, error } = await createClient().rpc("create_health_sync_token");
+    if (error || typeof data !== "string") fail("Could not make a key", error);
+    return data;
+  },
+
+  async revokeHealthToken() {
+    const { error } = await createClient().rpc("revoke_health_sync_tokens");
+    if (error) fail("Could not reset the connection", error);
   },
 };

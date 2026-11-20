@@ -38,7 +38,7 @@ export function SavedScreen() {
   }
 
   return (
-    <LogPage title="Saved meals">
+    <LogPage title="Saved Foods">
       {isPending ? (
         <div className="flex flex-col gap-2" aria-busy="true">
           {[0, 1, 2].map((i) => (
@@ -46,12 +46,12 @@ export function SavedScreen() {
           ))}
         </div>
       ) : isError ? (
-        <EmptyState icon={Bookmark} title="Couldn't load your saved meals">
+        <EmptyState icon={Bookmark} title="Couldn't load your saved foods">
           Check your connection and try again.
         </EmptyState>
       ) : saved.length === 0 ? (
-        <EmptyState icon={Bookmark} title="No saved meals yet">
-          Turn on “Save to my meals” when you add a meal, and it will show up here.
+        <EmptyState icon={Bookmark} title="No saved foods yet">
+          Turn on “Save to my meals” when you log a food, or tap Save to my meals on a logged food, and it will show up here.
         </EmptyState>
       ) : (
         <ul className="flex flex-col gap-2">

@@ -150,8 +150,3 @@ export function draftToProfile(draft: Draft, today: LogDate): Profile | null {
     today,
   );
 }
-
-/** A complete draft for jumping straight to a later screen while previewing. */
-export function previewDraft(): Draft {
-  return withGoal({ ...DEFAULT_DRAFT, sex: "male", activity: "moderate", addBurned: false, rollover: false }, "lose");
-}

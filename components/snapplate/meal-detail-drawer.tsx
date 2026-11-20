@@ -1,7 +1,9 @@
 "use client";
 
 import { Bookmark, Sparkles, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
+import { FixSheet } from "@/components/log/review-meal";
 import { HealthPanel } from "@/components/snapplate/health-panel";
 import { CaloriesCard, MacroCards, MoreNutrition } from "@/components/snapplate/meal-facts";
 import { MealThumb } from "@/components/snapplate/meal-row";
@@ -13,8 +15,11 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { useDeleteMeal, useSaveFavourite } from "@/hooks/use-data";
-import { savedFromMeal } from "@/lib/meal";
+import { useDeleteMeal, useSaveFavourite, useUpdateMeal } from "@/hooks/use-data";
+import { fixMeal } from "@/lib/ai/client";
+import { ERROR_MESSAGES } from "@/lib/ai/errors";
+import { blobToBase64, resizePhoto } from "@/lib/image";
+import { draftFromMeal, finalizeMeal, savedFromMeal } from "@/lib/meal";
 import { formatNumber } from "@/lib/format";
 import { formatClockTime, formatDate } from "@/lib/time";
 import type { Meal } from "@/lib/types";
@@ -30,6 +35,41 @@ export function MealDetailDrawer({
 }) {
   const deleteMeal = useDeleteMeal();
   const saveFavourite = useSaveFavourite();
+  const updateMeal = useUpdateMeal();
+  const [fixOpen, setFixOpen] = useState(false);
+  const [fixing, setFixing] = useState(false);
+
+  /** Re-estimate this meal from a correction, sending its photo too when it has one. */
+  async function handleFix(correction: string) {
+    if (!meal) return;
+    setFixing(true);
+    try {
+      let base64: string | undefined;
+      if (meal.source === "photo" && meal.imageUrl) {
+        try {
+          const response = await fetch(meal.imageUrl);
+          base64 = await blobToBase64(await resizePhoto(await response.blob()));
+        } catch {
+          // No photo is fine: the correction text alone still works.
+        }
+      }
+      const result = await fixMeal(draftFromMeal(meal), correction, base64);
+      if (!result.ok) {
+        toast.error(ERROR_MESSAGES[result.error]);
+        return;
+      }
+      // Keep when it was eaten and which meal it was; the estimate is for one serving of what you described.
+      const input = finalizeMeal({ ...result.value, mealType: meal.mealType, servings: 1 }, meal.loggedAt);
+      await updateMeal.mutateAsync({ id: meal.id, input });
+      setFixOpen(false);
+      onOpenChange(false);
+      toast.success("Meal updated");
+    } catch {
+      toast.error("Couldn't update that meal. Please try again.");
+    } finally {
+      setFixing(false);
+    }
+  }
 
   function handleDelete() {
     if (!meal) return;
@@ -109,7 +149,7 @@ export function MealDetailDrawer({
                   variant="outline"
                   size="lg"
                   className="flex-1 gap-2 border-[1.5px] border-input"
-                  onClick={() => toast("Coming soon", { description: "Fixing a result with AI is not built yet." })}
+                  onClick={() => setFixOpen(true)}
                 >
                   <Sparkles aria-hidden />
                   Fix Results
@@ -129,6 +169,7 @@ export function MealDetailDrawer({
             </div>
           </>
         ) : null}
+        <FixSheet open={fixOpen} onOpenChange={setFixOpen} onSubmit={(c) => void handleFix(c)} pending={fixing} />
       </DrawerContent>
     </Drawer>
   );

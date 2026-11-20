@@ -1,8 +1,7 @@
 "use client";
 
-import { Apple, FileText, RotateCcw, SlidersHorizontal, Target, UserRound, Utensils } from "lucide-react";
-import { SettingsButtonRow, SettingsGroup, SettingsLinkRow } from "@/components/settings/settings-ui";
-import { MockBanner } from "@/components/snapplate/mock-banner";
+import { Apple, BookOpen, CircleDashed, FileText, History, RotateCcw, SlidersHorizontal, Target, UserRound, Utensils } from "lucide-react";
+import { SettingsGroup, SettingsLinkRow } from "@/components/settings/settings-ui";
 import { ThemePicker } from "@/components/snapplate/theme-picker";
 import { useProfile } from "@/hooks/use-data";
 import { useToday } from "@/hooks/use-today";
@@ -54,16 +53,20 @@ function ProfileCard() {
 export function SettingsHome() {
   return (
     <div className="flex flex-col gap-5">
-      <MockBanner />
       <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
 
       <ProfileCard />
 
-      <SettingsGroup title="Goals & tracking">
+      <SettingsGroup title="Account">
         <SettingsLinkRow href="/settings/personal" icon={UserRound} label="Personal details" />
-        <SettingsLinkRow href="/settings/goal" icon={Target} label="Goal & current weight" />
-        <SettingsLinkRow href="/settings/nutrition" icon={Utensils} label="Nutrition goals" />
         <SettingsLinkRow href="/settings/preferences" icon={SlidersHorizontal} label="Preferences" />
+      </SettingsGroup>
+
+      <SettingsGroup title="Goals & tracking">
+        <SettingsLinkRow href="/settings/nutrition" icon={Utensils} label="Adjust macronutrients" />
+        <SettingsLinkRow href="/settings/goal" icon={Target} label="Goal & current weight" />
+        <SettingsLinkRow href="/settings/weight-history" icon={History} label="Weight history" />
+        <SettingsLinkRow href="/settings/ring-colors" icon={CircleDashed} label="Ring colors explained" />
       </SettingsGroup>
 
       <section className="flex flex-col gap-2">
@@ -72,7 +75,8 @@ export function SettingsHome() {
       </section>
 
       <SettingsGroup title="Connections">
-        <SettingsButtonRow icon={Apple} label="Apple Health" badge="Coming soon" disabled />
+        <SettingsLinkRow href="/settings/apple-health" icon={Apple} label="Apple Health" />
+        <SettingsLinkRow href="/settings/apple-health/guide" icon={BookOpen} label="Apple Health setup guide" />
       </SettingsGroup>
 
       <SettingsGroup title="Support & legal">

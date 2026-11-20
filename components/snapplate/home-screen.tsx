@@ -10,9 +10,9 @@ import { ExerciseRow } from "@/components/snapplate/exercise-row";
 import { HealthChip } from "@/components/snapplate/health-chip";
 import { MealDetailDrawer } from "@/components/snapplate/meal-detail-drawer";
 import { MealRow } from "@/components/snapplate/meal-row";
-import { MockBanner } from "@/components/snapplate/mock-banner";
 import { CalorieCard, MacroRingCard } from "@/components/snapplate/ring-cards";
 import { useSelectedDate } from "@/components/snapplate/selected-date";
+import { RingExplainer } from "@/components/snapplate/ring-explainer";
 import { StreakChip } from "@/components/snapplate/streak-chip";
 import { WaterCard } from "@/components/snapplate/water-card";
 import { WeekStrip, type DaySummary } from "@/components/snapplate/week-strip";
@@ -24,7 +24,7 @@ import { formatNumber } from "@/lib/format";
 import { ringProgress, ringState } from "@/lib/rings";
 import { currentStreak } from "@/lib/streak";
 import { addDays, formatDate, startOfWeek, weekDates, type LogDate } from "@/lib/time";
-import { averageHealthScore, groupByDate, rolloverAmount, sumMeals } from "@/lib/totals";
+import { averageHealthScore, burnedCalories, groupByDate, rolloverAmount, sumMeals } from "@/lib/totals";
 import type { Meal } from "@/lib/types";
 
 function HomeSkeleton() {
@@ -106,8 +106,9 @@ export function HomeScreen() {
   const totals = sumMeals(dayMeals);
   const activity = activityQuery.data?.find((a) => a.logDate === date);
   const dayExercise = (exerciseQuery.data ?? []).filter((e) => e.logDate === date);
-  // Calories burned: what Apple Health reports plus the workouts logged by hand or by AI.
-  const burnedTotal = (activity?.activeKcal ?? 0) + dayExercise.reduce((sum, e) => sum + e.calories, 0);
+  // Calories burned: Apple Health's active energy (which already includes its workouts) plus the
+  // workouts logged by hand or by AI.
+  const burnedTotal = burnedCalories(activity?.activeKcal ?? 0, dayExercise);
   const burned = profile.addBurnedCalories ? burnedTotal : 0;
 
   let rollover = 0;
@@ -144,7 +145,6 @@ export function HomeScreen() {
 
   return (
     <div className="flex flex-col gap-4">
-      <MockBanner />
 
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
@@ -168,6 +168,8 @@ export function HomeScreen() {
         canGoPrev={addDays(startOfWeek(date), -1) >= from}
         canGoNext={addDays(startOfWeek(date), 7) <= today}
       />
+
+      <RingExplainer />
 
       <CalorieCard
         value={formatNumber(Math.abs(remaining))}

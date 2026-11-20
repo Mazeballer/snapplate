@@ -120,7 +120,7 @@ export function FoodsScreen() {
           label="Foods"
           options={[
             { value: "all", label: "All" },
-            { value: "mine", label: "My meals" },
+            { value: "mine", label: "Saved" },
           ]}
           value={tab}
           onChange={setTab}
@@ -134,8 +134,8 @@ export function FoodsScreen() {
           ))}
         </div>
       ) : shown.length === 0 ? (
-        <EmptyState icon={UtensilsCrossed} title={text ? "No matches" : "Nothing here yet"}>
-          {text ? "Try a different word, or describe the meal instead." : "Foods you log will show up here for quick re-logging."}
+        <EmptyState icon={UtensilsCrossed} title={text ? "No matches" : tab === "mine" ? "No saved foods yet" : "Nothing here yet"}>
+          {text ? "Try a different word, or describe the meal instead." : tab === "mine" ? "Save a logged food and it will show up here." : "Foods you log will show up here for quick re-logging."}
         </EmptyState>
       ) : (
         <ul className="flex flex-col gap-2">

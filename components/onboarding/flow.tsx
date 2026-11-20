@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { OnboardingShell } from "@/components/onboarding/shell";
@@ -23,12 +23,10 @@ import {
 } from "@/components/onboarding/steps";
 import { useSaveProfile } from "@/hooks/use-data";
 import { useToday } from "@/hooks/use-today";
-import { MOCK_MODE } from "@/lib/mock";
 import {
   canContinue,
   DEFAULT_DRAFT,
   draftToProfile,
-  previewDraft,
   stepsFor,
   withGoal,
   type Draft,
@@ -37,19 +35,13 @@ import {
 import type { Goal } from "@/lib/nutrition";
 import type { Profile } from "@/lib/types";
 
-const KNOWN_STEPS = new Set<string>(stepsFor("lose"));
-
 export function OnboardingFlow() {
   const router = useRouter();
   const today = useToday();
   const save = useSaveProfile();
 
-  // Preview mode can jump straight to a screen with ?step=pace, to look at it without clicking through.
-  const jump = useSearchParams().get("step");
-  const jumpTo = MOCK_MODE && jump && KNOWN_STEPS.has(jump) ? (jump as StepId) : null;
-
-  const [draft, setDraft] = useState<Draft>(() => (jumpTo ? previewDraft() : DEFAULT_DRAFT));
-  const [stepId, setStepId] = useState<StepId>(jumpTo ?? "sex");
+  const [draft, setDraft] = useState<Draft>(DEFAULT_DRAFT);
+  const [stepId, setStepId] = useState<StepId>("sex");
   // Targets the person typed on the plan screen; cleared whenever an earlier answer changes.
   const [edited, setEdited] = useState<Profile | null>(null);
 
