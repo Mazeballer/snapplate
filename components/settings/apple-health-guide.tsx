@@ -6,7 +6,7 @@ import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { toast } from "sonner";
 import { SettingsPage } from "@/components/settings/settings-ui";
 import { Button } from "@/components/ui/button";
-import { SHORTCUT_NAME } from "@/lib/health-shortcut";
+import { buildShortcutPrompt, FIX_UP_PROMPT, SHORTCUT_NAME, WORKOUTS_PROMPT } from "@/lib/health-shortcut";
 import { cn } from "@/lib/utils";
 
 function Part({ title, intro, children }: { title: string; intro?: string; children: ReactNode }) {
@@ -69,6 +69,30 @@ function Field({ label, value }: { label: string; value: string }) {
         <span className="block break-all font-mono text-[0.8rem] text-foreground select-all">{value}</span>
       </span>
       <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1.5 rounded-full" onClick={() => void copy()} aria-label={`Copy ${label}`}>
+        {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
+        {copied ? "Copied" : "Copy"}
+      </Button>
+    </div>
+  );
+}
+
+function PromptBox({ label, text }: { label: string; text: string }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Couldn't copy. Press and hold the text to copy it.");
+    }
+  }
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-border bg-background p-3">
+      <pre className="max-h-56 overflow-y-auto font-sans text-[0.8rem] leading-relaxed whitespace-pre-wrap text-foreground select-all" aria-label={label}>
+        {text}
+      </pre>
+      <Button type="button" variant="outline" size="sm" className="gap-1.5 self-end rounded-full" onClick={() => void copy()} aria-label={`Copy ${label}`}>
         {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
         {copied ? "Copied" : "Copy"}
       </Button>
@@ -144,6 +168,45 @@ export function AppleHealthGuide() {
           <Field label="Address" value={endpoint} />
         </Step>
       </Part>
+
+      <Part
+        title="Option 1: Let Apple Intelligence build it"
+        intro="On iOS 27 the Shortcuts app can build a shortcut from a written description. It's the quickest way, but check what it builds."
+      >
+        <Step n={1} title="Copy the prompt">
+          <p>This message has your address filled in and tells it exactly what to build, including the automation. It does not contain your key.</p>
+          <PromptBox label="Prompt" text={buildShortcutPrompt(endpoint)} />
+        </Step>
+        <Step n={2} title="Give it to Shortcuts">
+          <p>
+            Open the <b>Shortcuts</b> app, tap <b>+</b> and choose the option to <b>describe</b> what you want (or ask Siri to create a shortcut). Paste the prompt and
+            send it. Accept the shortcut it proposes.
+          </p>
+          <Callout>If it asks a question, answer with the rule from the prompt, for example &ldquo;use Active Energy, not Exercise Minutes&rdquo;.</Callout>
+        </Step>
+        <Step n={3} title="Add your key yourself">
+          <p>
+            Open the shortcut, tap <b>Get Contents of URL</b> and <b>Show More</b>. In the header, replace <b>PASTE_MY_KEY_HERE</b> with the key you copied. Keep the word{" "}
+            <b>Bearer</b> and one space before it.
+          </p>
+          <Callout tone="warn">Don&apos;t send your key to the assistant. Only you should type it, so it never goes through a prompt.</Callout>
+        </Step>
+        <Step n={4} title="Check it, and fix it if needed" see="Two Number fields named steps and activeKcal, a header named Authorization, and Method POST.">
+          <p>Look over the actions against the list in the guide below. If something is off, send this follow-up:</p>
+          <PromptBox label="Fix-up message" text={FIX_UP_PROMPT} />
+        </Step>
+        <Step n={5} title="Optional: add your named workouts">
+          <p>Your calories are already right without this. It only lists each workout by name.</p>
+          <PromptBox label="Workouts message" text={WORKOUTS_PROMPT} />
+        </Step>
+        <Step n={6} title="Test it, then check the automation">
+          <p>
+            Continue with <b>Part 2: Test it</b> below. In the Automation tab you should see the automation it made, set to Run Immediately. If not, follow Part 3.
+          </p>
+        </Step>
+      </Part>
+
+      <h2 className="px-1 pt-2 text-xl font-bold">Option 2: Build it by hand</h2>
 
       <Part title="Part 1: Build the shortcut" intro="Open the Shortcuts app (the purple and pink icon). If you can't find it, swipe down on the Home Screen and search.">
         <Step n={1} title="Start a new shortcut">

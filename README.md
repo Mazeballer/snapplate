@@ -9,7 +9,7 @@ A private, mobile-first calorie tracker you install on your phone as a PWA. Snap
 - Supabase: Postgres with row-level security, Google sign-in, private photo storage
 - Gemini for food photo analysis (server side only)
 - Serwist service worker for the installable offline shell
-- pnpm and Vitest
+- pnpm
 
 ## How access works
 
@@ -30,9 +30,11 @@ All dates and times use Malaysia time (Asia/Kuala_Lumpur) through `lib/time.ts`.
 
 - `pnpm dev` starts the dev server (the service worker is off in dev).
 - `pnpm build` then `pnpm start` runs the production build, where the PWA install and offline behaviour can be tested.
-- `pnpm test` runs the unit tests, `pnpm lint` runs ESLint.
+- `pnpm lint` runs ESLint.
 - `node scripts/generate-icons.mjs` regenerates the app icons.
 
-## Status
+## What is in it
 
-Done: PWA shell, Malaysia-time and nutrition logic with tests, database schema and security rules, Google sign-in with the allowlist gate. Next: onboarding, meal logging, AI photo scan, progress, Apple Health sync via an iOS Shortcut.
+Google sign-in behind an email allowlist, setup with a calorie and macro plan, a home screen with calorie and macro rings, photo scan and describe-a-meal logging with Gemini, a food database made from your own meals, saved foods, exercise, water, weight, a progress page, settings, and Apple Health sync through an iOS Shortcut (see Settings, Apple Health, in the app for the setup guide).
+
+The Apple Health sync needs the `supabase/migrations/20261115000000_health_sync.sql` migration applied with `supabase db push`.
