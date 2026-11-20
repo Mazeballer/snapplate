@@ -3,10 +3,11 @@
 import { ChartNoAxesColumn, House, Plus, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LogSheet } from "@/components/snapplate/log-sheet";
 import { useQueryClient } from "@tanstack/react-query";
 import { profileQuery, useProfile, weightsQuery } from "@/hooks/use-data";
+import { useBottomPin, useFieldFocused } from "@/hooks/use-keyboard-reset";
 import { cn } from "@/lib/utils";
 
 function isActive(pathname: string, href: string) {
@@ -31,6 +32,10 @@ function ProfileIcon({ active }: { active: boolean }) {
 export function TabBar() {
   const pathname = usePathname();
   const [logOpen, setLogOpen] = useState(false);
+  // Hidden while typing (the keyboard covers it anyway) and always held on the bottom edge.
+  const typing = useFieldFocused();
+  const barRef = useRef<HTMLElement>(null);
+  useBottomPin(barRef);
 
   // Load what Progress needs while you're on Home, so opening it is instant.
   const queryClient = useQueryClient();
@@ -47,7 +52,7 @@ export function TabBar() {
 
   return (
     <>
-      <nav aria-label="Main" className="pointer-events-none fixed inset-x-0 bottom-0 z-40">
+      <nav ref={barRef} aria-label="Main" data-typing={typing} className="pointer-events-none fixed inset-x-0 bottom-0 z-40 data-[typing=true]:invisible">
         <div className="pointer-events-auto mx-auto flex max-w-md items-center gap-3 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           <ul className="flex flex-1 rounded-full border border-border bg-card p-1.5 shadow-[0_4px_20px_rgba(30,26,36,0.12)]">
             {tabs.map(({ href, label, icon }) => {

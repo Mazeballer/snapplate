@@ -61,3 +61,91 @@ describe("keyboard reset", () => {
     expect(scrollTo).not.toHaveBeenCalled();
   });
 });
+
+import { act, render as renderAgain } from "@testing-library/react";
+import { useRef } from "react";
+import { useBottomPin, useFieldFocused } from "@/hooks/use-keyboard-reset";
+
+function Bar() {
+  const typing = useFieldFocused(300);
+  const ref = useRef<HTMLElement>(null);
+  useBottomPin(ref);
+  return (
+    <div>
+      <nav ref={ref} data-typing={typing} aria-label="bar" />
+      <input aria-label="name" />
+      <input type="checkbox" aria-label="switch" />
+    </div>
+  );
+}
+
+describe("tab bar behaviour", () => {
+  beforeEach(() => {
+    Object.defineProperty(window, "visualViewport", {
+      value: { scale: 1, offsetTop: 0, height: 800, addEventListener: () => undefined, removeEventListener: () => undefined },
+      configurable: true,
+    });
+  });
+
+  it("hides while a text field is focused and comes back after the keyboard closes", () => {
+    const { getByLabelText } = renderAgain(<Bar />);
+    const bar = getByLabelText("bar");
+    expect(bar.getAttribute("data-typing")).not.toBe("true");
+
+    act(() => (getByLabelText("name") as HTMLInputElement).focus());
+    expect(bar.getAttribute("data-typing")).toBe("true");
+
+    act(() => (getByLabelText("name") as HTMLInputElement).blur());
+    expect(bar.getAttribute("data-typing")).toBe("true"); // still settling
+    act(() => void vi.advanceTimersByTime(350));
+    expect(bar.getAttribute("data-typing")).not.toBe("true"); // shown again
+  });
+
+  it("stays visible when a switch or checkbox is focused, since they bring up no keyboard", () => {
+    const { getByLabelText } = renderAgain(<Bar />);
+    act(() => (getByLabelText("switch") as HTMLInputElement).focus());
+    expect(getByLabelText("bar").getAttribute("data-typing")).not.toBe("true");
+  });
+
+  it("holds the bar on the bottom edge when the page is displaced, and leaves it alone otherwise", () => {
+    const listeners: Record<string, () => void> = {};
+    const viewport = {
+      scale: 1,
+      offsetTop: 0,
+      height: 800,
+      addEventListener: (type: string, fn: () => void) => void (listeners[type] = fn),
+      removeEventListener: () => undefined,
+    };
+    Object.defineProperty(window, "visualViewport", { value: viewport, configurable: true });
+    vi.stubGlobal("requestAnimationFrame", (fn: () => void) => setTimeout(fn, 0));
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => clearTimeout(id));
+    const { getByLabelText } = renderAgain(<Bar />);
+    const bar = getByLabelText("bar");
+    expect(bar.style.transform).toBe("");
+
+    // The visible area ends 40px above where the layout thinks the bottom is.
+    viewport.height = 760;
+    act(() => {
+      listeners.resize?.();
+      vi.advanceTimersByTime(20);
+    });
+    expect(bar.style.transform).toBe("translate3d(0px, -40px, 0px)");
+
+    viewport.height = 800;
+    act(() => {
+      listeners.resize?.();
+      vi.advanceTimersByTime(20);
+    });
+    expect(bar.style.transform).toBe("");
+
+    // Pinch-zoomed: hands off.
+    viewport.height = 500;
+    viewport.scale = 2;
+    act(() => {
+      listeners.resize?.();
+      vi.advanceTimersByTime(20);
+    });
+    expect(bar.style.transform).toBe("");
+    vi.unstubAllGlobals();
+  });
+});
