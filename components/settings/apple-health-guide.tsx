@@ -171,7 +171,7 @@ export function AppleHealthGuide() {
 
       <Part
         title="Option 1: Let Apple Intelligence build it"
-        intro="On iOS 27 the Shortcuts app can build a shortcut from a written description. It's the quickest way, but check what it builds."
+        intro="Only on iOS 27 or later. If your + sheet looks like the Search box with Automation, Scripting and Controls buttons and no place to describe what you want, skip to Option 2, which works on every version."
       >
         <Step n={1} title="Copy the prompt">
           <p>This message has your address filled in and tells it exactly what to build, including the automation. It does not contain your key.</p>
@@ -209,6 +209,19 @@ export function AppleHealthGuide() {
       <h2 className="px-1 pt-2 text-xl font-bold">Option 2: Build it by hand</h2>
 
       <Part title="Part 1: Build the shortcut" intro="Open the Shortcuts app (the purple and pink icon). If you can't find it, swipe down on the Home Screen and search.">
+        <Step n={0} title="How adding actions works on your phone" see="A sheet with a Search box at the top, then Automation, Scripting and Controls buttons, then a list of apps.">
+          <p>
+            In the Shortcuts tab tap <b>+</b> (top right). A sheet slides up. <b>There is no Add Action button.</b> Every action comes from the <b>Search box at the top of that sheet</b>:
+            type the action&apos;s name and tap it in the results. It is added to your shortcut.
+          </p>
+          <p>
+            If the sheet closes, tap the search bar at the bottom of the shortcut, or the <b>+</b> there, to open it again. Actions are added below the last one.
+          </p>
+          <p>
+            To fill in a value from an earlier action, tap the blank field, then tap the result you want in the bar above the keyboard (for example the blue <b>Statistics</b>).
+            To open an action&apos;s extra settings, tap the small arrow on the action (Show More).
+          </p>
+        </Step>
         <Step n={1} title="Start a new shortcut">
           <p>
             On the <b>Shortcuts</b> tab tap <b>+</b> at the top right. Tap the name at the top, choose <b>Rename</b>, and call it exactly:
@@ -218,29 +231,29 @@ export function AppleHealthGuide() {
 
         <Step n={2} title="Read today's steps" see="You'll see two actions: Find Health Samples, then Calculate Statistics.">
           <p>
-            Tap <b>Add Action</b>, search <b>Find Health Samples</b> and add it.
+            In the Search box type <b>Find Health Samples</b> and tap it. (If it isn&apos;t listed, scroll the app list in the sheet to <b>Health</b> and look there.)
           </p>
           <p>
             Set <b>Type</b> to <b>Steps</b>. Add a filter <b>Start Date</b> <b>is Today</b>.
           </p>
           <p>
-            Add another action: <b>Calculate Statistics</b>. Set the statistic to <b>Sum</b>.
+            Open the Search box again, type <b>Calculate Statistics</b>, and tap it. Tap the word <b>Average</b> (or whichever statistic it shows) and choose <b>Sum</b>.
           </p>
         </Step>
 
         <Step n={3} title="Read today's active calories" see="Now you have two Find Health Samples and two Calculate Statistics, in pairs.">
           <p>
-            Add <b>Find Health Samples</b> again. Set <b>Type</b> to <b>Active Energy</b> and the filter <b>Start Date is Today</b>.
+            Search <b>Find Health Samples</b> again and add it. Set <b>Type</b> to <b>Active Energy</b> and the filter <b>Start Date is Today</b>.
           </p>
           <p>
-            Add <b>Calculate Statistics</b> again, set to <b>Sum</b>.
+            Search <b>Calculate Statistics</b> again and add it, set to <b>Sum</b>.
           </p>
           <Callout>Active Energy already includes the calories from your workouts, so you don&apos;t need anything extra for an accurate total.</Callout>
         </Step>
 
         <Step n={4} title="Send them to Snapplate" see="The action shows a URL, then Method, Headers and Request Body once you tap Show More.">
           <p>
-            Add the action <b>Get Contents of URL</b>. Paste the address from above into the URL.
+            Search <b>Get Contents of URL</b> and tap it. (It is also under the <b>Scripting</b> button in the sheet, in Web.) Tap the URL field and paste the address from above.
           </p>
           <p>
             Tap <b>Show More</b>. Set <b>Method</b> to <b>POST</b>.
@@ -269,7 +282,7 @@ export function AppleHealthGuide() {
 
         <Step n={7} title="Show the reply (to check it works)">
           <p>
-            Add a last action: <b>Show Result</b>. It shows what Snapplate answers, which helps while setting up. You can delete it later.
+            Search <b>Show Result</b> and add it as the last action. It shows what Snapplate answers, which helps while setting up. You can delete it later.
           </p>
         </Step>
       </Part>
@@ -277,7 +290,7 @@ export function AppleHealthGuide() {
       <Part title="Part 2: Test it">
         <Step n={1} title="Run it once" see={`The result shows "ok": true with your date, steps and activeKcal.`}>
           <p>
-            Tap the <b>play</b> button. The first time, iOS asks to let Shortcuts read your Health data and to send data to your Snapplate address. Tap{" "}
+            Tap the <b>play</b> button. If it asks which results to show, choose the Get Contents of URL result. The first time, iOS asks to let Shortcuts read your Health data and to send data to your Snapplate address. Tap{" "}
             <b>Allow</b> (or <b>Always Allow</b>) for each.
           </p>
         </Step>
@@ -289,7 +302,7 @@ export function AppleHealthGuide() {
       <Part title="Part 3: Make it run by itself" intro="Pick whichever works on your phone. You can use more than one.">
         <Step n="A" title="Every time you open Snapplate (best)">
           <p>
-            In Shortcuts open the <b>Automation</b> tab, tap <b>+</b>, then <b>App</b>. Tap <b>Choose</b>, pick <b>Snapplate</b>, and leave <b>Is Opened</b>
+            In Shortcuts open the <b>Automation</b> tab (bottom of the screen), tap <b>+</b>, then <b>App</b> (type it in the search box if you don&apos;t see it). Tap <b>Choose</b>, pick <b>Snapplate</b>, and leave <b>Is Opened</b>
             selected. Tap <b>Next</b>.
           </p>
           <p>
@@ -317,19 +330,19 @@ export function AppleHealthGuide() {
       >
         <Step n={1} title="Find today's workouts">
           <p>
-            Before <b>Get Contents of URL</b>, add <b>Find Health Samples</b> with <b>Type</b> <b>Workouts</b> and <b>Start Date is Today</b>.
+            Before <b>Get Contents of URL</b> (drag actions by their handle to reorder), search and add <b>Find Health Samples</b> with <b>Type</b> <b>Workouts</b> and <b>Start Date is Today</b>.
           </p>
         </Step>
         <Step n={2} title="Describe each workout">
           <p>
-            Add <b>Repeat with Each</b>. Inside it add a <b>Dictionary</b> with four Text items: <b>name</b> (the workout&apos;s type), <b>startedAt</b> (its start date),{" "}
+            Search and add <b>Repeat with Each</b>. Inside it add a <b>Dictionary</b> with four Text items: <b>name</b> (the workout&apos;s type), <b>startedAt</b> (its start date),{" "}
             <b>durationMin</b> (its duration) and <b>calories</b> (its active energy).
           </p>
           <p>
             Before the Dictionary, add <b>Format Date</b> on the start date with the format <b>ISO 8601</b>, and use that for <b>startedAt</b>. Snapplate needs the date in that form.
           </p>
           <p>
-            After the Dictionary add <b>Add to Variable</b> and name the variable <b>Workouts</b>.
+            After the Dictionary search and add <b>Add to Variable</b> and name the variable <b>Workouts</b>.
           </p>
         </Step>
         <Step n={3} title="Send the list too">
