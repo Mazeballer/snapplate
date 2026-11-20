@@ -3,8 +3,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { useState, type ReactNode } from "react";
+import { useKeyboardReset } from "@/hooks/use-keyboard-reset";
 
 export function Providers({ children }: { children: ReactNode }) {
+  useKeyboardReset();
   const [queryClient] = useState(
     () =>
       new QueryClient({

@@ -36,6 +36,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--border-radius": "var(--radius)",
         } as React.CSSProperties
       }
+      // Installed on an iPhone the page runs under the status bar and notch, so keep toasts below it.
+      offset={{ top: "calc(env(safe-area-inset-top, 0px) + 12px)" }}
+      mobileOffset={{ top: "calc(env(safe-area-inset-top, 0px) + 12px)" }}
       toastOptions={{
         classNames: {
           toast: "cn-toast",
